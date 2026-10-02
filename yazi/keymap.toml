@@ -1,0 +1,7 @@
+#:schema https://yazi-rs.github.io/schemas/keymap.json
+
+[mgr]
+
+prepend_keymap = [
+	{ on = "<C-c>", run = "copy path", desc = "Copy file path to clipboard" },
+]
