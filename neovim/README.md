@@ -1,8 +1,81 @@
-# Neovim
+# Neovim on macOS
 
 Personal Python setup adapted from [Joel Hooks' Kickstart configuration](https://github.com/joelhooks/dotfiles/tree/c3f55039c22e9b36b93c5ba193a5ff406467e001/nvim), with its original plugin pins retained where applicable. Upstream identifies the dotfiles as MIT-licensed; the configuration derives from [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim).
 
 Symlink this repository’s `neovim` folder to `~/.config/nvim`. Editor/plugin settings are in `init.lua`; the four search actions are in `lua/search.lua`. `lazy-lock.json` records the installed plugin commits. Sidekick provides agent CLI sessions; AI completion and Next Edit Suggestions are disabled. Ordinary language-server completion remains available. Errors use underlines and gutter markers without inline text; details appear in diagnostic floats and the error list. Only error diagnostics are shown, including in the file tree, status line, diagnostic jumps, and error list. Warning/info/hint diagnostics are hidden without changing project rules. Notifications show errors only; LSP progress remains available. `:Fidget history` shows retained error notifications.
+
+## Install on another Mac
+
+The guide assumes the standard config path `~/.config/nvim` and macOS’s zsh shell. Use [Kitty’s guide](../kitty/README.md) for the matching terminal appearance. This Neovim setup has been tested with **Neovim 0.12.4**; the plugin and tool pins below are preserved. Homebrew installs its current application/runtime versions, so it does not freeze the complete OS or runtime environment.
+
+### 1. Install prerequisites
+
+Install Apple’s Command Line Tools if needed (`xcode-select --install`), finish the installer, and install [Homebrew](https://brew.sh) if needed. Follow Homebrew’s printed shell/PATH instructions for your Mac’s architecture before continuing.
+
+```sh
+brew install neovim git ripgrep fd tmux node python uv
+brew install --cask font-jetbrains-mono-nerd-font
+nvim --version
+```
+
+Git supplies history/diffs; ripgrep and fd supply search; Command Line Tools supply clang/make for native plugin/parser builds; Node runs fallback Pyright; Python is used for bootstrapping and projects; uv runs the integration checks. macOS supplies zsh, curl, tar, unzip, and clipboard tools. Use JetBrainsMono Nerd Font Mono in your terminal so icons align; Kitty’s config selects it automatically.
+
+### 2. Clone and link the config
+
+Clone once into a permanent location. Skip the clone if you already did it for Kitty. Use your normal GitHub authentication if the repository is private.
+
+```sh
+git clone https://github.com/TomasTillmann/dot-files.git "$HOME/dot-files"
+```
+
+Close Neovim, back up any existing config directory or symlink, and link the **neovim subfolder**, not the repository root:
+
+```sh
+mkdir -p "$HOME/.config"
+if [ -e "$HOME/.config/nvim" ] || [ -L "$HOME/.config/nvim" ]; then
+  mv "$HOME/.config/nvim" "$HOME/.config/nvim.backup-$(date +%Y%m%d-%H%M%S)"
+fi
+ln -s "$HOME/dot-files/neovim" "$HOME/.config/nvim"
+```
+
+### 3. Install the locked plugins and tools
+
+Follow [Dependencies and updates](#dependencies-and-updates) below in order: bootstrap Lazy at its lockfile commit, install locked plugins, install the four pinned Mason tools, and compile the listed syntax parsers. Network access is needed for those explicit commands. If plugins/tools already exist on the destination Mac, follow the repair/restore commands there instead of cloning Lazy over them.
+
+### 4. Add zsh integration
+
+Add the following to `~/.zshrc` once, after other shell key bindings, then open a new terminal. The aliases and EDITOR/VISUAL settings reproduce the editor shell defaults; the hook is required for popup shell editing. It is not installed automatically by symlinking the config.
+
+```zsh
+alias vim='nvim'
+alias vi='nvim'
+export EDITOR='nvim'
+export VISUAL='nvim'
+bindkey '^R' history-incremental-search-backward
+if [[ -n "$NVIM_POPUP_TERMINAL" ]]; then
+  source "$HOME/.config/nvim/shell/popup.zsh"
+fi
+```
+
+To use Caps Lock like Escape, open [System Settings → Keyboard → Keyboard Shortcuts → Modifier Keys](https://support.apple.com/guide/mac-help/change-the-behavior-of-the-modifier-keys-mchlp1011/mac), select your keyboard, and set Caps Lock to Escape. Double Escape also works without this OS remapping.
+
+### 5. Install agent CLIs for Sidekick
+
+To reproduce both agent choices, install the [Codex CLI](https://formulae.brew.sh/cask/codex) and [Claude Code CLI](https://formulae.brew.sh/cask/claude-code), then run each once and finish its normal sign-in:
+
+```sh
+brew install --cask codex claude-code
+codex
+claude
+```
+
+These are optional for ordinary editing. Tmux is already installed by step 1 and provides Sidekick session persistence. Credentials are never copied from another Mac. No Copilot account is needed; AI completion/Next Edit Suggestions remain disabled.
+
+### 6. Open your own project and verify
+
+From any project you cloned or created on this Mac, run `nvim .`. No fixed project path is required. For Python, create/install that project’s `.venv` using its own instructions; a project-installed Python Pyright wrapper requires Python **3.11+** because it reads TOML with `tomllib`. Project dependencies and virtual environments are not dot files.
+
+Run `:checkhealth`, `:checkhealth vim.lsp`, and `:ConformInfo`. Try Space `e` for the file tree, Space `sf`/`sg` for searches, Space `t` for the popup shell, and the Git/agent keys below. The branch comparison uses `origin/main` or `main` when available; projects with another default branch can change the Space `gm` mapping in `init.lua`. Run the [existing verification checks](#verification) after installing all dependencies.
 
 ## Daily use
 
@@ -56,11 +129,11 @@ Catppuccin includes Mocha, Macchiato, Frappé, and Latte. A theme picked interac
 
 [Diffview](https://github.com/sindrets/diffview.nvim) opens changes or history in a dedicated tab, with its file/commit panel on the left. Select a file with Enter or double-click to open its side-by-side diff; Tab/Shift-Tab move between files. The two file panes share the available width equally after window resizing or returning to a diff tab, with the file panel retaining its width (odd column counts can leave a one-column difference). In a Diffview tab, Space `e` focuses its panel and Space `b` toggles it; Space `gq` returns to editing. Working-tree and branch comparisons use recursive filesystem notifications on macOS, grouping write bursts into one refresh after 300 ms. Only the visible view refreshes in Normal mode; unsaved buffers are preserved. Git index/ref changes are watched too, so staging and commits refresh Current Changes. Refreshes deferred while typing in a terminal resume when leaving it, including closing the popup. Diffview's built-in index polling is disabled; these refreshes are event-driven. Branch comparisons recheck their merge base on Git ref changes and when returning to the view. If a merge or ref update changes the base, the comparison reopens in the same tab position with the selected file preserved when it still has changes. This prevents changes inherited from main remaining in an already-open view. Git tabs are labeled `Current Changes`, `Changes against main`, or `History`; the help hint is hidden, but `g?` still opens the built-in help. In either diff pane, Ctrl `j` / Ctrl `k` jump to the next/previous changed block, continuing into the next/previous file at the boundary. Files without diff hunks are skipped; navigation wraps around the file list. Escape/Caps Lock in Normal mode does not navigate changes. Mouse-wheel/trackpad scrolling over either diff pane automatically focuses that pane and scrolls both sides together, vertically and horizontally; no click is needed. Long lines do not wrap in editing or diff views. Scroll sideways with the trackpad, or use native `zh`/`zl` (one column) and `zH`/`zL` (half a window) to pan left/right. Touchpad scrolling in editor and diff windows locks to the first horizontal or vertical direction, preventing diagonal drift. Pause briefly before changing axes (150 ms without scroll events); terminal mouse events do not report when fingers lift. Scrolling starts immediately, with no polling or timer. Files are shown in full, without collapsed code folds, both while editing and in Git diffs. The ordinary file tree remains unchanged.
 
-[ToggleTerm](https://github.com/akinsho/toggleterm.nvim) opens your shell in a centered popup covering 90% of the editor. Press Space `t` in editor Normal mode to open the last-used session, ready for typing. Press Caps Lock twice (mapped to Escape on this machine), or Escape twice, within 300 ms to hide it. A single Escape reaches the shell or running program; a double press hides the popup even while a command/editor is running. The popup stays in terminal input mode, including after ordinary mouse clicks; the native Ctrl Backslash, Ctrl N sequence also hides it. Hiding preserves the shell, running commands, working directory, and output for this Neovim session.
+[ToggleTerm](https://github.com/akinsho/toggleterm.nvim) opens your shell in a centered popup covering 90% of the editor. Press Space `t` in editor Normal mode to open the last-used session, ready for typing. Press Caps Lock twice (when mapped to Escape in macOS), or Escape twice, within 300 ms to hide it. A single Escape reaches the shell or running program; a double press hides the popup even while a command/editor is running. The popup stays in terminal input mode, including after ordinary mouse clicks; the native Ctrl Backslash, Ctrl N sequence also hides it. Hiding preserves the shell, running commands, working directory, and output for this Neovim session.
 
-Its title shows nine terminal slots, with the current one in brackets. Click a number to switch shells; clicking the active number keeps it open. From the editor, use `:2ToggleTerm` through `:9ToggleTerm` to open another slot, or `:TermSelect` to select an existing session. Each shell starts on first selection. Spaces, numbers, and `t` remain ordinary terminal input. Outside the popup, Normal-mode numbers still switch editor tabs. `exit` ends that shell; selecting its slot again starts a fresh one. Click an HTTP/HTTPS link in its output to open it in your default browser; links must fit on one terminal line. This terminal is separate from Sidekick's agent sessions. Ctrl `r` searches shell history; press it again for older matches. The zsh binding is set in `~/.zshrc`: `bindkey '^R' history-incremental-search-backward` (also add it when setting up a new machine). The popup zsh hook selects Emacs editing (`bindkey -e`) so Escape cannot put the shell line editor into Vi mode. Popup key handling no longer uses shell prompt events.
+Its title shows nine terminal slots, with the current one in brackets. Click a number to switch shells; clicking the active number keeps it open. From the editor, use `:2ToggleTerm` through `:9ToggleTerm` to open another slot, or `:TermSelect` to select an existing session. Each shell starts on first selection. Spaces, numbers, and `t` remain ordinary terminal input. Outside the popup, Normal-mode numbers still switch editor tabs. `exit` ends that shell; selecting its slot again starts a fresh one. Click an HTTP/HTTPS link in its output to open it in your default browser; links must fit on one terminal line. This terminal is separate from Sidekick's agent sessions. Ctrl `r` searches shell history; press it again for older matches. The zsh binding is configured by the installation step above: `bindkey '^R' history-incremental-search-backward`. The popup zsh hook selects Emacs editing (`bindkey -e`) so Escape cannot put the shell line editor into Vi mode. Popup key handling no longer uses shell prompt events.
 
-Keep this hook in `~/.zshrc` (already installed here), after other key bindings:
+The installation step above includes this hook in `~/.zshrc`; keep it after other key bindings:
 
 ```zsh
 if [[ -n "$NVIM_POPUP_TERMINAL" ]]; then
@@ -74,7 +147,7 @@ Restart Neovim to load the new mappings and shell settings.
 
 ## Agents
 
-[Sidekick](https://github.com/folke/sidekick.nvim) opens your installed agent CLIs in a right-hand terminal split. Codex and Claude Code are already installed on this machine; they keep their existing login and permission settings. Start Neovim from the repository root: new agent sessions use the editor's current working directory.
+[Sidekick](https://github.com/folke/sidekick.nvim) opens your installed agent CLIs in a right-hand terminal split. Install and authenticate Codex and Claude Code using the steps above; each CLI keeps its own login and permission settings. Start Neovim from the repository root: new agent sessions use the editor's current working directory.
 
 | Keys | Action |
 | --- | --- |
@@ -101,17 +174,18 @@ Restart Neovim after changing this setup. Use `:checkhealth vim.lsp` to inspect 
 
 ## Dependencies and updates
 
-Tested with Neovim **0.12.4** on macOS. Keep a stable Neovim release; treat upgrading Neovim itself as a separate change from plugin updates. External tools: Git, tmux, an agent CLI, ripgrep, fd, a C compiler/make, and Python/Node tooling. `uv` is used by the integration checks.
+Tested with Neovim **0.12.4** on macOS. Treat upgrading Neovim itself as a separate change from plugin updates. External tools: Git, tmux, an agent CLI, ripgrep, fd, a C compiler/make, and Python/Node tooling. `uv` is used by the integration checks.
 
 Normal startup does **not** install managed plugins, Mason tools, or syntax parsers, or check for plugin updates. Missing Tree-sitter highlighting falls back to ordinary syntax and reports a repair command once per filetype. Missing/failing formatters allow saving and report errors; `:ConformInfo` shows details. If the plugin manager is missing, Neovim starts with basic editing and an installation hint.
 
 `lazy-lock.json` records plugin commits. The Mason setup in `init.lua` pins the installed fallback tools: Pyright **1.1.414**, Ruff **0.15.21**, StyLua **v2.5.2**, and Tree-sitter CLI **v0.26.11**. Project-installed Pyright still takes priority. The plugin lockfile does not pin Neovim, external runtimes, or project virtual environments.
 
-On a new machine, install the external tools and symlink this repository’s `neovim` folder to `~/.config/nvim`. Bootstrap Lazy at the lockfile revision (only when its directory is missing):
+On a new machine, install the external tools and symlink this repository’s `neovim` folder to `~/.config/nvim`. Bootstrap Lazy at the lockfile revision on a fresh installation (only when its directory is missing; create the parent directory first):
 
 ```sh
 nvim_data="${XDG_DATA_HOME:-$HOME/.local/share}/nvim"
 nvim_config="${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
+mkdir -p "$nvim_data/lazy"
 git clone --filter=blob:none --no-checkout https://github.com/folke/lazy.nvim.git "$nvim_data/lazy/lazy.nvim"
 git -C "$nvim_data/lazy/lazy.nvim" checkout "$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["lazy.nvim"]["commit"])' "$nvim_config/lazy-lock.json")"
 ```
@@ -130,12 +204,6 @@ For repair, use `:Lazy restore` for installed plugins (the explicit install comm
 
 **Rollback:** revert the update commit, run `:Lazy restore` and `:MasonToolsInstall`, then `:TSUpdate` to align parsers with the restored plugin revision, and restart. These commands do not downgrade Neovim or external Python/Node runtimes; keep your previous runtime installer/version available when upgrading those separately. Avoid bundling a Neovim upgrade with tool and plugin updates. Agent maintenance guidance is in `AGENTS.md`.
 
-## Kitty sessions
-
-The terminal shortcuts live in `~/.config/kitty/kitty.conf`. Cmd+Shift+S asks for a name and saves the current OS window without opening an editor. Enter only a short name such as `research`: Kitty adds `.kitty-session` and saves under `~/.config/kitty/sessions`. Reusing a name replaces that saved session. Cmd+Shift+O lists saved sessions in that folder to open or switch to. Ctrl+Cmd+, reloads these shortcuts without closing windows.
-
-Saved sessions restore layouts, working directories, and launch commands; they relaunch programs rather than preserving live process state. Kitty currently opens `auctions.kitty-session` at startup.
-
 ## Verification
 
 Run all checks from the `neovim` folder with the active config (temporary projects only; stop at the first failure):
@@ -152,7 +220,7 @@ The terminal-session check covers all nine slots through title clicks and Toggle
 
 The Python check exercises two independent `.venv` environments (including a nested monorepo package), real dependency/type navigation, hover, cross-file references, workspace symbols, type diagnostics, and Python syntax parsing. The search check exercises all four pickers, unopened-file type results from a fresh session, and isolation between repositories. The diagnostics check verifies errors-only presentation, error-list toggling, and retention of the server's complete diagnostic data. The autosave check verifies FocusLost writes, normal save hooks, excluded buffers, and visible write failures. The commit-refresh check runs a real commit in the popup terminal and verifies that Current Changes clears after closing it without switching tabs. The branch-refresh check merges main into a feature branch and moves refs without changing files, verifying both diff panes, tab placement, and unsaved-buffer preservation. The diff-scroll check sends real mouse-wheel events over unfocused panes and verifies synchronized scrolling, direction locking, and ordinary-window behavior.
 
-Sidekick terminal acceptance verified Codex startup, file and visual-selection prefill without submission, prompt selection, tmux detach/reattach with input preserved, and automatic reload of external edits in a disposable project. No model request was submitted.
+For Sidekick, check CLI startup, file/selection prefill, tmux detach/reattach, and refresh after an external file edit in a disposable project. Prefill does not submit a model request; press Enter only when you intend to send it.
 
 ## Upstream implementations
 
