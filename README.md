@@ -12,7 +12,16 @@ Portable Kitty, Neovim, Yazi, and Starship configuration for macOS. Clone this r
 
 Editing a config edits this repository, so syncing is `git commit` and `git push` here, and `git pull` on another Mac. Machine-specific files (Kitty `local.conf` and `sessions/`) are ignored by Git. `~/.zshrc` stays local because installers write to it and it may hold credentials; it sources the shared [zsh settings](zsh/README.md).
 
-Start with the installation guide for each app:
+On a new Mac, install [Homebrew](https://brew.sh), clone the repository, and install the apps and tools these configs use from the [Brewfile](Brewfile): Kitty, the Nerd Font, Neovim and its tools, Codex and Claude Code, Yazi, Starship, VS Code, and Chrome. It is a hand-picked list, not a dump of everything installed:
+
+```sh
+git clone https://github.com/TomasTillmann/dot-files.git "$HOME/.dot-files"
+brew bundle --file "$HOME/.dot-files/Brewfile"
+```
+
+`brew bundle check --file "$HOME/.dot-files/Brewfile"` lists entries that are missing or outdated. Apps installed outside Homebrew (for example Chrome downloaded from its website) are reported as missing; `brew install --cask --adopt <name>` lets Homebrew manage the existing copy.
+
+Then link each config following its guide:
 
 - [Kitty setup, appearance, shortcuts, and local sessions](kitty/README.md)
 - [Neovim setup, locked plugins/tools, shell integration, and shortcuts](neovim/README.md)
@@ -23,6 +32,7 @@ Start with the installation guide for each app:
 ```text
 .dot-files/
 ├── README.md
+├── Brewfile
 ├── .gitignore
 ├── kitty/
 │   ├── README.md
