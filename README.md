@@ -1,6 +1,17 @@
 # Mac dot files
 
-Portable Kitty, Neovim, Yazi, and Starship configuration for macOS. Start with the installation guide for each app:
+Portable Kitty, Neovim, Yazi, and Starship configuration for macOS. Clone this repository to `~/.dot-files`; each app's config path is a symlink into it:
+
+| Config path | Links to |
+| --- | --- |
+| `~/.config/kitty` | `~/.dot-files/kitty` |
+| `~/.config/nvim` | `~/.dot-files/neovim` |
+| `~/.config/yazi` | `~/.dot-files/yazi` |
+| `~/.config/starship.toml` | `~/.dot-files/starship/starship.toml` |
+
+Editing a config edits this repository, so syncing is `git commit` and `git push` here, and `git pull` on another Mac. Machine-specific files (Kitty `local.conf` and `sessions/`) are ignored by Git. `~/.zshrc` is not tracked because it holds local credentials; each guide lists the lines to add to it.
+
+Start with the installation guide for each app:
 
 - [Kitty setup, appearance, shortcuts, and local sessions](kitty/README.md)
 - [Neovim setup, locked plugins/tools, shell integration, and shortcuts](neovim/README.md)
@@ -8,7 +19,7 @@ Portable Kitty, Neovim, Yazi, and Starship configuration for macOS. Start with t
 - [Starship prompt and zsh initialization](starship/README.md)
 
 ```text
-dot-files/
+.dot-files/
 ├── README.md
 ├── .gitignore
 ├── kitty/

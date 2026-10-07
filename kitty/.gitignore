@@ -1,2 +1,4 @@
 # Saved workspaces contain local project paths and running commands.
 sessions/
+# Machine-specific settings (startup_session, etc.).
+local.conf

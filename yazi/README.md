@@ -18,7 +18,7 @@ macOS supplies `file` for type detection and `pbcopy` for the clipboard. FFmpeg 
 Clone once into a permanent location. Skip this command if you already cloned for Kitty or Neovim. Use your normal GitHub authentication if the repository is private.
 
 ```sh
-git clone https://github.com/TomasTillmann/dot-files.git "$HOME/dot-files"
+git clone https://github.com/TomasTillmann/dot-files.git "$HOME/.dot-files"
 ```
 
 Close Yazi, back up an existing config directory or symlink, then link this folder:
@@ -28,7 +28,7 @@ mkdir -p "$HOME/.config"
 if [ -e "$HOME/.config/yazi" ] || [ -L "$HOME/.config/yazi" ]; then
   mv "$HOME/.config/yazi" "$HOME/.config/yazi.backup-$(date +%Y%m%d-%H%M%S)"
 fi
-ln -s "$HOME/dot-files/yazi" "$HOME/.config/yazi"
+ln -s "$HOME/.dot-files/yazi" "$HOME/.config/yazi"
 ```
 
 Add this line to `~/.zshrc` once, replacing any existing `f` alias/function:

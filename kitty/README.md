@@ -14,7 +14,7 @@ brew install --cask kitty font-jetbrains-mono-nerd-font
 3. Clone once into a permanent location. If you already cloned this repo while installing Neovim, skip this command. Use your normal GitHub authentication if the repository is private.
 
 ```sh
-git clone https://github.com/TomasTillmann/dot-files.git "$HOME/dot-files"
+git clone https://github.com/TomasTillmann/dot-files.git "$HOME/.dot-files"
 ```
 
 4. Quit Kitty before changing its config. Use the standard macOS config path `~/.config/kitty`. Back up an existing directory or symlink, then link the config and create the local sessions directory:
@@ -24,7 +24,7 @@ mkdir -p "$HOME/.config"
 if [ -e "$HOME/.config/kitty" ] || [ -L "$HOME/.config/kitty" ]; then
   mv "$HOME/.config/kitty" "$HOME/.config/kitty.backup-$(date +%Y%m%d-%H%M%S)"
 fi
-ln -s "$HOME/dot-files/kitty" "$HOME/.config/kitty"
+ln -s "$HOME/.dot-files/kitty" "$HOME/.config/kitty"
 mkdir -p "$HOME/.config/kitty/sessions"
 open -a kitty
 ```
@@ -62,7 +62,7 @@ Kitty starts with a normal shell. No project or agent is opened automatically.
 
 Arrange your own tabs/panes and press Cmd+Shift+S. Enter a short name such as `workspace`; Kitty adds `.kitty-session` and saves under `~/.config/kitty/sessions`. Reusing a name replaces the saved session. Cmd+Shift+O chooses a saved session. These files are ignored by Git because they contain local working directories and launch commands.
 
-[Sessions](https://sw.kovidgoyal.net/kitty/sessions/) recreate layouts and relaunch saved foreground programs; they do not preserve live processes. To opt into automatic startup locally, add `startup_session ~/.config/kitty/sessions/workspace.kitty-session` to your config after saving that session. Keep that local customization out of commits.
+[Sessions](https://sw.kovidgoyal.net/kitty/sessions/) recreate layouts and relaunch saved foreground programs; they do not preserve live processes. To opt into automatic startup on one Mac, add `startup_session ~/.config/kitty/sessions/workspace.kitty-session` to `~/.config/kitty/local.conf` after saving that session. `kitty.conf` includes `local.conf` last; the file is ignored by Git, and Kitty skips it when it does not exist.
 
 ## Check the result
 

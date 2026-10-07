@@ -33,19 +33,7 @@ function M.start(view)
     end
     if state.base and state.base ~= view.left.commit then
       -- Reopening also replaces cached revision buffers for files whose paths did not change.
-      local index = vim.api.nvim_tabpage_get_number(view.tabpage)
-      local args = { '-C' .. view.adapter.ctx.toplevel, view.rev_arg, '--imply-local' }
-      if view.cur_entry then args[#args + 1] = '--selected-file=' .. view.cur_entry.path end
-      if view.options.show_untracked ~= nil then args[#args + 1] = '--untracked-files=' .. tostring(view.options.show_untracked) end
-      if #view.path_args > 0 then args[#args + 1] = '--'; vim.list_extend(args, view.path_args) end
-      require('diffview').open(args)
-      local reopened = vim.api.nvim_get_current_tabpage()
-      if reopened == view.tabpage then return end -- Keep the old view if opening failed.
-      vim.api.nvim_set_current_tabpage(view.tabpage)
-      require('diffview').close()
-      vim.api.nvim_set_current_tabpage(reopened)
-      vim.cmd('tabmove ' .. (index - 1))
-      require('tabline').select(index)
+      M.reopen(view, view.rev_arg)
       return
     end
     view:update_files()
@@ -83,6 +71,24 @@ function M.start(view)
       schedule()
     end,
   })
+end
+
+-- Replace a comparison in its tab position, keeping the selected file when it still differs.
+function M.reopen(view, rev_arg)
+  local index = vim.api.nvim_tabpage_get_number(view.tabpage)
+  local args = { '-C' .. view.adapter.ctx.toplevel, rev_arg, '--imply-local' }
+  if view.cur_entry then args[#args + 1] = '--selected-file=' .. view.cur_entry.path end
+  if view.options.show_untracked ~= nil then args[#args + 1] = '--untracked-files=' .. tostring(view.options.show_untracked) end
+  if #view.path_args > 0 then args[#args + 1] = '--'; vim.list_extend(args, view.path_args) end
+  vim.api.nvim_set_current_tabpage(view.tabpage)
+  require('diffview').open(args)
+  local reopened = vim.api.nvim_get_current_tabpage()
+  if reopened == view.tabpage then return end -- Keep the old view if opening failed.
+  vim.api.nvim_set_current_tabpage(view.tabpage)
+  require('diffview').close()
+  vim.api.nvim_set_current_tabpage(reopened)
+  vim.cmd('tabmove ' .. (index - 1))
+  require('tabline').select(index)
 end
 
 function M.stop(view)

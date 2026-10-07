@@ -18,7 +18,7 @@ Select **JetBrainsMono Nerd Font Mono** in your terminal. [Kitty’s guide](../k
 Clone once into a permanent location. Skip this command if you already cloned for another app in this repo. Use your normal GitHub authentication if the repository is private.
 
 ```sh
-git clone https://github.com/TomasTillmann/dot-files.git "$HOME/dot-files"
+git clone https://github.com/TomasTillmann/dot-files.git "$HOME/.dot-files"
 ```
 
 Back up any existing config file or symlink, then link **the TOML file**, not the folder:
@@ -28,7 +28,7 @@ mkdir -p "$HOME/.config"
 if [ -e "$HOME/.config/starship.toml" ] || [ -L "$HOME/.config/starship.toml" ]; then
   mv "$HOME/.config/starship.toml" "$HOME/.config/starship.toml.backup-$(date +%Y%m%d-%H%M%S)"
 fi
-ln -s "$HOME/dot-files/starship/starship.toml" "$HOME/.config/starship.toml"
+ln -s "$HOME/.dot-files/starship/starship.toml" "$HOME/.config/starship.toml"
 ```
 
 Add these lines to `~/.zshrc` once, after any other prompt/theme setup. Replace an existing Starship initialization rather than adding it twice:
