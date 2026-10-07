@@ -27,6 +27,9 @@ brew "poppler"
 # Starship prompt.
 brew "starship"
 
+# Secret scanning for commits to this public repository (.githooks/pre-commit).
+brew "gitleaks"
+
 # Other apps.
 cask "visual-studio-code"
 cask "google-chrome"

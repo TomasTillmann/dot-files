@@ -12,16 +12,32 @@ Portable Kitty, Neovim, Yazi, and Starship configuration for macOS. Clone this r
 
 Editing a config edits this repository, so syncing is `git commit` and `git push` here, and `git pull` on another Mac. Machine-specific files (Kitty `local.conf` and `sessions/`) are ignored by Git. `~/.zshrc` stays local because installers write to it and it may hold credentials; it sources the shared [zsh settings](zsh/README.md).
 
-On a new Mac, install [Homebrew](https://brew.sh), clone the repository, and install the apps and tools these configs use from the [Brewfile](Brewfile): Kitty, the Nerd Font, Neovim and its tools, Codex and Claude Code, Yazi, Starship, VS Code, and Chrome. It is a hand-picked list, not a dump of everything installed:
+## New Mac
+
+Install [Homebrew](https://brew.sh), then clone and run the setup script:
 
 ```sh
 git clone https://github.com/TomasTillmann/dot-files.git "$HOME/.dot-files"
-brew bundle --file "$HOME/.dot-files/Brewfile"
+"$HOME/.dot-files/install.sh"
 ```
 
-`brew bundle check --file "$HOME/.dot-files/Brewfile"` lists entries that are missing or outdated. Apps installed outside Homebrew (for example Chrome downloaded from its website) are reported as missing; `brew install --cask --adopt <name>` lets Homebrew manage the existing copy.
+`install.sh` is safe to re-run. It:
 
-Then link each config following its guide:
+1. Installs the hand-picked [Brewfile](Brewfile) (`--no-brew` skips this): Kitty, the Nerd Font, Neovim and its tools, Codex and Claude Code, Yazi, Starship, gitleaks, VS Code, and Chrome. Apps installed outside Homebrew are reported as failures; `brew install --cask --adopt <name>` lets Homebrew manage the existing copy.
+2. Creates the config links in the table above, moving anything already there to `<name>.backup-<timestamp>`.
+3. Adds `source "$HOME/.dot-files/zsh/zshrc"` to `~/.zshrc` if it is missing. Remove older copies of those settings from `~/.zshrc` afterwards.
+4. On a fresh Neovim install, bootstraps Lazy and installs the locked plugins, pinned Mason tools, and syntax parsers.
+5. Enables the secret-scanning commit hook below.
+
+Remaining manual steps: map Caps Lock to Escape ([Kitty guide](kitty/README.md)) and sign in to the agent CLIs ([Neovim guide](neovim/README.md)). `brew bundle check --file "$HOME/.dot-files/Brewfile"` lists missing or outdated packages later.
+
+## Secret scanning
+
+This repository is public. `.githooks/pre-commit` runs [gitleaks](https://github.com/gitleaks/gitleaks) on staged changes and blocks the commit if it finds a key, token, or password; `install.sh` enables it with `git config core.hooksPath .githooks`. If a finding is a false positive, adjust the change or, after checking it, commit with `git commit --no-verify`. Scan the whole history with `gitleaks git .`.
+
+## Per-app guides
+
+Each guide explains its config and the manual equivalent of the setup script:
 
 - [Kitty setup, appearance, shortcuts, and local sessions](kitty/README.md)
 - [Neovim setup, locked plugins/tools, shell integration, and shortcuts](neovim/README.md)
@@ -33,6 +49,8 @@ Then link each config following its guide:
 .dot-files/
 ├── README.md
 ├── Brewfile
+├── install.sh
+├── .githooks/pre-commit
 ├── .gitignore
 ├── kitty/
 │   ├── README.md
