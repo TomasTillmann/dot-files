@@ -10,7 +10,7 @@ Portable Kitty, Neovim, Yazi, and Starship configuration for macOS. Clone this r
 | `~/.config/starship.toml` | `~/.dot-files/starship/starship.toml` |
 | `~/.zshrc` (local file) | sources `~/.dot-files/zsh/zshrc` |
 
-Editing a config edits this repository, so syncing is `git commit` and `git push` here, and `git pull` on another Mac. Machine-specific files (Kitty `local.conf` and `sessions/`) are ignored by Git. `~/.zshrc` stays local because installers write to it and it may hold credentials; it sources the shared [zsh settings](zsh/README.md).
+The links live in `~/.config`, not in this repository: each app still reads its usual path, which points here (`ls -l ~/.config` shows them). Editing a config edits this repository, so syncing is `git commit` and `git push` here, and `git pull` on another Mac. Machine-specific files (Kitty `local.conf` and `sessions/`) are ignored by Git. `~/.zshrc` stays local because installers write to it and it may hold credentials; it sources the shared [zsh settings](zsh/README.md).
 
 ## New Mac
 

@@ -56,9 +56,11 @@ runner = coroutine.create(function()
       for index = 2, 3 do
         vim.api.nvim_feedkeys(tostring(index), 'xt', false)
         assert(vim.api.nvim_get_current_tabpage() == tabs[index])
-        assert(vim.bo.filetype ~= 'DiffviewFiles', 'Tab shortcut left focus in side panel')
         local view = require('diffview.lib').get_current_view()
+        -- Diff panes briefly show a placeholder buffer while loading, so check the window, not its filetype.
+        assert(vim.api.nvim_get_current_win() ~= view.panel.winid, 'Tab shortcut left focus in side panel')
         wait(function() return view.ready and view.files:len() == 1 and view.cur_entry and view.cur_entry.opened end)
+        assert(vim.bo.filetype ~= 'DiffviewFiles', 'Focus did not settle in a diff pane')
         assert(view.rev_arg == (index == 3 and ((remote and 'origin/main' or 'main') .. '...HEAD') or nil))
         for _, columns in ipairs({ 240, 100, 160 }) do
           resize(columns)
