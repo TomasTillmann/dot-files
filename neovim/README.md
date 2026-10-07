@@ -44,6 +44,8 @@ Follow [Dependencies and updates](#dependencies-and-updates) below in order: boo
 
 ### 4. Add zsh integration
 
+If you use the [shared zsh config](../zsh/README.md), these lines are already included; skip this step.
+
 Add the following to `~/.zshrc` once, after other shell key bindings, then open a new terminal. The aliases and EDITOR/VISUAL settings reproduce the editor shell defaults; the hook is required for popup shell editing. It is not installed automatically by symlinking the config.
 
 ```zsh

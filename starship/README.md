@@ -31,6 +31,8 @@ fi
 ln -s "$HOME/.dot-files/starship/starship.toml" "$HOME/.config/starship.toml"
 ```
 
+If you use the [shared zsh config](../zsh/README.md), these lines are already included; skip this step.
+
 Add these lines to `~/.zshrc` once, after any other prompt/theme setup. Replace an existing Starship initialization rather than adding it twice:
 
 ```zsh

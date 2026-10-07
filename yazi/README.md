@@ -31,6 +31,8 @@ fi
 ln -s "$HOME/.dot-files/yazi" "$HOME/.config/yazi"
 ```
 
+If you use the [shared zsh config](../zsh/README.md), these lines are already included; skip this step.
+
 Add this line to `~/.zshrc` once, replacing any existing `f` alias/function:
 
 ```zsh

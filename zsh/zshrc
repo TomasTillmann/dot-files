@@ -1,0 +1,21 @@
+# Shared zsh settings from ~/.dot-files; ~/.zshrc sources this after machine-specific setup.
+
+# Use Neovim wherever a terminal editor is requested.
+alias vim='nvim'
+alias vi='nvim'
+export EDITOR='nvim'
+export VISUAL='nvim'
+
+# Yazi `f` wrapper, from ~/.dot-files/yazi.
+source "$HOME/.config/yazi/f.zsh"
+
+# Starship prompt
+eval "$(starship init zsh)"
+
+# Keep reverse history search available when zsh selects Vi bindings.
+bindkey '^R' history-incremental-search-backward
+
+# Keep Escape/session navigation local to Neovim's popup terminals.
+if [[ -n "$NVIM_POPUP_TERMINAL" ]]; then
+  source "$HOME/.config/nvim/shell/popup.zsh"
+fi
