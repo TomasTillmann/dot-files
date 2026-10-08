@@ -554,7 +554,7 @@ entrypoint()
         view_closed = function(view) require('diff_refresh').stop(view) end,
         diff_buf_win_enter = function() vim.wo.foldenable = false end,
       },
-      file_panel = { listing_style = 'list', win_config = { position = 'left', width = 34 } },
+      file_panel = { listing_style = 'tree', win_config = { position = 'left', width = 34 } },
       file_history_panel = { win_config = { position = 'left', width = 34 } },
     },
   },

@@ -27,7 +27,7 @@ function M.jump(direction)
     local ok, err = xpcall(function()
       local files = {}
       if view.files then
-        for _, file in view.files:iter() do files[#files + 1] = file end
+        files = view.panel:ordered_file_list() -- Follows the panel's tree order.
       else
         for _, entry in ipairs(view.panel.entries) do
           vim.list_extend(files, entry.files)
