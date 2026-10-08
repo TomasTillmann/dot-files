@@ -194,8 +194,8 @@ require('lazy').setup({
       local wk = require('which-key')
       local hints_enabled = false
       wk.setup({
-        delay = 0,
-        filter = function() return hints_enabled end,
+        -- Which-key always waits for the next key; hints only control whether its popup appears.
+        delay = function() return hints_enabled and 0 or math.huge end,
         icons = { mappings = vim.g.have_nerd_font },
         spec = {
           { '<leader>a', group = '[A]gents', mode = { 'n', 'x' } },
@@ -206,7 +206,6 @@ require('lazy').setup({
 
       vim.keymap.set('n', '?', function()
         hints_enabled = not hints_enabled
-        wk.add({}) -- Rebuild cached hints using the updated filter.
         vim.api.nvim_echo({ { 'Key hints: ' .. (hints_enabled and 'on' or 'off') } }, false, {})
       end, { desc = 'Toggle automatic key hints' })
 
@@ -506,7 +505,7 @@ entrypoint()
     lazy = false,
     dependencies = { 'nvim-lua/plenary.nvim', 'MunifTanjim/nui.nvim', 'nvim-tree/nvim-web-devicons' },
     keys = {
-      { '<leader>e', '<cmd>Neotree toggle filesystem reveal left<cr>', desc = 'File tree' },
+      { '<leader>b', function() require('side_panel').toggle() end, desc = 'Toggle side panel' },
       { '-', '<cmd>Neotree reveal filesystem left<cr>', desc = 'Reveal current file in tree' },
     },
     opts = {
@@ -514,7 +513,7 @@ entrypoint()
       enable_git_status = false,
       sources = { 'filesystem', 'buffers' },
       default_component_configs = { diagnostics = { errors_only = true } },
-      window = { position = 'left', width = 34 },
+      window = { position = 'left', width = 34, mappings = { ['<space>'] = 'none' } }, -- Space stays the leader inside the tree.
       filesystem = {
         window = { mappings = { ['[g'] = 'none', [']g'] = 'none', ['og'] = 'none' } },
         check_gitignore_in_search = false,
@@ -539,11 +538,15 @@ entrypoint()
     opts = {
       watch_index = false, -- diff_refresh watches index/ref changes without polling.
       show_help_hints = false,
-      keymaps = {
+      keymaps = { -- The global Space b (side_panel) toggles the panel; Diffview's Space b/e are disabled.
         view = {
           { 'n', '<C-j>', function() require('diff_navigation').jump(1) end, { desc = 'Next change across files' } },
           { 'n', '<C-k>', function() require('diff_navigation').jump(-1) end, { desc = 'Previous change across files' } },
+          { 'n', '<leader>b', false },
+          { 'n', '<leader>e', false },
         },
+        file_panel = { { 'n', '<leader>b', false }, { 'n', '<leader>e', false } },
+        file_history_panel = { { 'n', '<leader>b', false }, { 'n', '<leader>e', false } },
       },
       hooks = {
         view_opened = function(view)
