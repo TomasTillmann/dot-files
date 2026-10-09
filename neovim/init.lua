@@ -55,8 +55,23 @@ vim.api.nvim_create_autocmd('VimEnter', {
   once = true,
   callback = function()
     if not package.loaded.lazy or #vim.api.nvim_list_uis() == 0 or #vim.api.nvim_list_tabpages() > 1 or vim.fn.argc() > 1 then return end
+    -- :restart restores its session after startup; the workspace is rebuilt then (SessionLoadPost below).
+    if vim.v.startreason == 'restart' then return end
     local directory = vim.fn.argc() == 0 and vim.fn.getcwd() or vim.fn.argv(0)
     if vim.fn.isdirectory(directory) == 1 then require('tabline').open_workspace(directory) end
+  end,
+})
+local restoring_workspace = false
+vim.api.nvim_create_autocmd('SessionLoadPost', {
+  desc = 'Rebuild file tree and Git tabs after a session (including :restart) is restored',
+  callback = function()
+    -- Sessions fire this once per buffer (doautoall) inside autocmd windows; rebuild once, afterwards.
+    if not package.loaded.lazy or restoring_workspace then return end
+    restoring_workspace = true
+    vim.schedule(function()
+      restoring_workspace = false
+      require('tabline').restore_workspace()
+    end)
   end,
 })
 
