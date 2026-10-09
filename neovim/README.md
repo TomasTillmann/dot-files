@@ -179,7 +179,7 @@ Tested with Neovim **0.12.4** on macOS. Treat upgrading Neovim itself as a separ
 
 Normal startup does **not** install managed plugins, Mason tools, or syntax parsers, or check for plugin updates. Missing Tree-sitter highlighting falls back to ordinary syntax and reports a repair command once per filetype. Missing/failing formatters allow saving and report errors; `:ConformInfo` shows details. If the plugin manager is missing, Neovim starts with basic editing and an installation hint.
 
-`lazy-lock.json` records plugin commits. The Mason setup in `init.lua` pins the installed fallback tools: ty **0.0.84**, Pyright **1.1.414**, Ruff **0.15.21**, StyLua **v2.5.2**, and Tree-sitter CLI **v0.26.11**. Project-installed ty and Pyright still take priority. The plugin lockfile does not pin Neovim, external runtimes, or project virtual environments.
+`lazy-lock.json` records plugin commits. The Mason setup in `init.lua` pins the installed fallback tools: ty **0.0.85**, Pyright **1.1.414**, Ruff **0.15.21**, StyLua **v2.5.2**, and Tree-sitter CLI **v0.26.11**. Project-installed ty and Pyright still take priority. The plugin lockfile does not pin Neovim, external runtimes, or project virtual environments.
 
 On a new machine, install the external tools and symlink this repository’s `neovim` folder to `~/.config/nvim`. Bootstrap Lazy at the lockfile revision on a fresh installation (only when its directory is missing; create the parent directory first):
 

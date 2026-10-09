@@ -383,7 +383,7 @@ entrypoint()
       -- Explicit installs only; keep fallback tool versions reproducible.
       require('mason-tool-installer').setup({
         ensure_installed = {
-          { 'ty', version = '0.0.84' },
+          { 'ty', version = '0.0.85' },
           { 'pyright', version = '1.1.414' },
           { 'ruff', version = '0.15.21' },
           { 'stylua', version = 'v2.5.2' },
