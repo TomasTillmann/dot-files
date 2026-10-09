@@ -17,6 +17,7 @@ function M.render()
 end
 
 function M.select(index)
+  if index > #vim.api.nvim_list_tabpages() then return end
   vim.cmd('tabnext ' .. index)
   local filetype = vim.bo.filetype
   if filetype == 'neo-tree' or filetype == 'DiffviewFiles' or filetype == 'DiffviewFileHistory' then vim.cmd('wincmd l') end

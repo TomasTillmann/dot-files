@@ -40,7 +40,7 @@ ln -s "$HOME/.dot-files/neovim" "$HOME/.config/nvim"
 
 ### 3. Install the locked plugins and tools
 
-Follow [Dependencies and updates](#dependencies-and-updates) below in order: bootstrap Lazy at its lockfile commit, install locked plugins, install the four pinned Mason tools, and compile the listed syntax parsers. Network access is needed for those explicit commands. If plugins/tools already exist on the destination Mac, follow the repair/restore commands there instead of cloning Lazy over them.
+Follow [Dependencies and updates](#dependencies-and-updates) below in order: bootstrap Lazy at its lockfile commit, install locked plugins, install the pinned Mason tools, and compile the listed syntax parsers. Network access is needed for those explicit commands. If plugins/tools already exist on the destination Mac, follow the repair/restore commands there instead of cloning Lazy over them.
 
 ### 4. Add zsh integration
 
@@ -83,12 +83,12 @@ Run `:checkhealth`, `:checkhealth vim.lsp`, and `:ConformInfo`. Try Space `b` fo
 
 Opening a Git folder with `nvim .` (or `nvim` from that folder) creates **Panel**, **Current Changes**, and **Changes against main** tabs immediately, leaving Panel focused. The comparison prefers `origin/main`, falls back to local `main`, and is skipped if neither shares history with HEAD. Click a tab to switch to it; double-clicking the tab bar does not create empty tabs. Tabs can be closed normally; `1`–`9` always follow their current positions and focus the editing/diff buffer instead of the side panel. Non-Git folders, explicit file opens, and restored multi-tab sessions keep their normal startup.
 
-Start from your project: `cd /path/to/project && nvim .` (or `nvim app.py`). Space is the leader key. Automatic key hints are off by default. Press `?` in Normal mode to toggle them for the session; when on, press Space and pause for the key menu. Either way, shortcuts have no time limit: after Space, take as long as you like before the next key (Escape cancels). Space `?` searches every mapping. The `?` toggle replaces Vim’s backward-search prompt.
+Start from your project: `cd /path/to/project && nvim .` (or `nvim app.py`). Space is the leader key. Automatic key hints are off by default. Press Space `h` in Normal mode to toggle them for the session; when on, press Space and pause for the key menu. Either way, shortcuts have no time limit: after Space, take as long as you like before the next key (Escape cancels). Space `?` searches every mapping.
 
 | Keys | Action |
 | --- | --- |
-| `?` | Normal mode: toggle automatic key hints (default: off) |
-| `1`–`9` | Normal mode: jump to that tab and focus its buffer (replaces numeric counts) |
+| Space `h` | Toggle automatic key hints (default: off) |
+| `1`–`9` | Normal mode: jump to that tab and focus its buffer (replaces numeric counts; does nothing when that tab doesn't exist) |
 | Space `b` | Toggle the left side panel from any window: closes whatever is docked on the left (file tree, Git file/history panel); when nothing is, opens the Git panel in a Git tab, otherwise the file tree |
 | `-` | Reveal the current file in the tree |
 | Space Space | Open files by recent use; Enter switches to the previous file (or shows the current file if it is the only one open) |
@@ -110,6 +110,10 @@ Start from your project: `cd /path/to/project && nvim .` (or `nvim app.py`). Spa
 | Space `gh` | Git repository history |
 | Space `gf` | Git current-file history |
 | Space `gq` | Close the Git view and return to editing |
+| `]h` / `[h` | Next/previous Git change in the current file (changed lines are marked in the sign column) |
+| Space `gp` | Preview the Git change under the cursor |
+| Space `gs` / Space `gr` | Stage (or unstage) / reset the change under the cursor, or the selected lines in Visual mode |
+| Space `gl` | Show Git blame for the current line |
 | Space `ut` | Preview/select themes; Catppuccin Mocha is the startup default |
 | Ctrl `h/j/k/l` | Move between splits; in diff panes, Ctrl `j/k` jump to the next/previous change |
 | Ctrl `d` / Ctrl `u` | Smooth scroll down/up 10 lines |
@@ -169,7 +173,7 @@ On another machine, install `tmux` and your preferred agent CLI, then authentica
 
 Two language servers split the work. [ty](https://github.com/astral-sh/ty) supplies hover, completion, references, definitions, type definitions, rename, and symbols; its diagnostics are discarded. [Pyright](https://github.com/microsoft/pyright) supplies only diagnostics, so the editor reports what the project's typecheck task reports; its navigation and completion capabilities are removed so results are not duplicated. Both use the project-root `.venv` without requiring shell activation: Pyright via `python.pythonPath`, ty via `VIRTUAL_ENV` (overriding any environment Neovim was started from). Root detection first looks for the nearest ancestor containing `.venv`, so monorepo packages share their workspace environment even when they have their own `pyproject.toml`. Without `.venv`, standard project markers such as `pyproject.toml`, `pyrightconfig.json`, `ty.toml`, `requirements.txt`, and `.git` determine the root. Each project gets its own pair of servers sharing that root.
 
-The project’s `.venv/bin/pyright-langserver` is preferred, including environment/version settings from `[tool.poe.tasks.typecheck.env]`; likewise the project’s `.venv/bin/ty`. Mason’s pinned copies are the fallback for projects without local tools. Diagnostic rules come from `pyrightconfig.json` or `[tool.pyright]`; there is no editor type-checking-mode or severity override. Only Pyright supplies Python diagnostics; Ruff handles formatting through Conform. Normal LSP completions use Blink; Ctrl Space requests completion and Ctrl Y accepts it.
+The project’s `.venv/bin/pyright-langserver` is preferred, including environment/version settings from `[tool.poe.tasks.typecheck.env]`; likewise the project’s `.venv/bin/ty`. Mason’s pinned copies are the fallback for projects without local tools. Diagnostic rules come from `pyrightconfig.json` or `[tool.pyright]`; there is no editor type-checking-mode or severity override. Pyright supplies type diagnostics. [Ruff](https://docs.astral.sh/ruff/)'s language server adds lint diagnostics only in repositories that configure Ruff (`ruff.toml`, `.ruff.toml`, or `[tool.ruff]`), using that configuration; its findings are shown as errors because CI fails on them, and its fix/organize-imports code actions are available through `gra`. Ruff also formats on save through Conform. Both Ruff uses prefer the project's `.venv/bin/ruff` so rules and versions match CI. Lua files get [lua-language-server](https://luals.github.io/) with [lazydev](https://github.com/folke/lazydev.nvim) supplying Neovim API types. Normal LSP completions use Blink; Ctrl Space requests completion and Ctrl Y accepts it.
 
 Restart Neovim after changing this setup. Use `:checkhealth vim.lsp` to inspect attached servers, and `:lua =vim.lsp.get_clients({bufnr=0, name="pyright"})[1].settings.python.pythonPath` to inspect the interpreter (nil means Pyright’s default). The editor checks open files; run the repository’s typecheck task for the full project.
 
@@ -179,7 +183,7 @@ Tested with Neovim **0.12.4** on macOS. Treat upgrading Neovim itself as a separ
 
 Normal startup does **not** install managed plugins, Mason tools, or syntax parsers, or check for plugin updates. Missing Tree-sitter highlighting falls back to ordinary syntax and reports a repair command once per filetype. Missing/failing formatters allow saving and report errors; `:ConformInfo` shows details. If the plugin manager is missing, Neovim starts with basic editing and an installation hint.
 
-`lazy-lock.json` records plugin commits. The Mason setup in `init.lua` pins the installed fallback tools: ty **0.0.85**, Pyright **1.1.414**, Ruff **0.15.21**, StyLua **v2.5.2**, and Tree-sitter CLI **v0.26.11**. Project-installed ty and Pyright still take priority. The plugin lockfile does not pin Neovim, external runtimes, or project virtual environments.
+`lazy-lock.json` records plugin commits. The Mason setup in `init.lua` pins the installed fallback tools: ty **0.0.85**, Pyright **1.1.414**, Ruff **0.15.21**, lua-language-server **3.19.1**, StyLua **v2.5.2**, and Tree-sitter CLI **v0.26.11**. Project-installed ty, Pyright, and Ruff still take priority. The plugin lockfile does not pin Neovim, external runtimes, or project virtual environments.
 
 On a new machine, install the external tools and symlink this repository’s `neovim` folder to `~/.config/nvim`. Bootstrap Lazy at the lockfile revision on a fresh installation (only when its directory is missing; create the parent directory first):
 
@@ -196,7 +200,7 @@ Then explicitly install the locked plugins, pinned tools, and syntax parsers:
 ```sh
 nvim --headless '+lua require("lazy").install({wait=true, lockfile=true})' +qa
 nvim --headless '+MasonToolsInstallSync' +qa
-nvim --headless '+lua require("nvim-treesitter").install({"python","bash","diff","lua","luadoc","markdown","markdown_inline","query","vim","vimdoc"}):wait(120000)' +qa
+nvim --headless '+lua require("nvim-treesitter").install({"python","bash","diff","lua","luadoc","markdown","markdown_inline","query","vim","vimdoc","toml","yaml","json","dockerfile","gitcommit","git_rebase"}):wait(120000)' +qa
 ```
 
 For repair, use `:Lazy restore` for installed plugins (the explicit install command above for missing ones), `:MasonToolsInstall`, or `:TSInstall python` (substitute the affected language). `:checkhealth vim.deprecated` catches configuration API deprecations; `:checkhealth` checks the broader environment. Health checks for lazy-loaded plugins may require opening their feature first. Missing Go/Rust/PHP runtimes are not needed for this Python setup.
@@ -219,7 +223,7 @@ Run all checks from the `neovim` folder with the active config (temporary projec
 
 The terminal-session check covers all nine slots through title clicks and ToggleTerm commands, single Escape reaching a nested commit editor, double Escape hiding the popup, Space `t` reopening it, terminal input after mouse clicks, literal space/number input, shell state/output persistence, returning to the last session, exit/recreation, resize, and editor-tab shortcuts. The startup resilience check verifies disabled automatic installs, fallback highlighting, visible formatter failures, and saving when formatting is unavailable. The workspace/tab, recent-file, and hint-toggle checks cover the customized navigation; the diff-open check verifies Telescope picks from Git tabs land in the Panel tab.
 
-The Python check exercises two independent `.venv` environments (including a nested monorepo package), real dependency/type navigation, hover, cross-file references, workspace symbols, type diagnostics, and Python syntax parsing. The search check exercises all four pickers, unopened-file type results from a fresh session, and isolation between repositories. The diagnostics check verifies errors-only presentation, error-list toggling, and retention of the server's complete diagnostic data. The autosave check verifies FocusLost writes, normal save hooks, excluded buffers, and visible write failures. The commit-refresh check runs a real commit in the popup terminal and verifies that Current Changes clears after closing it without switching tabs. The branch-refresh check merges main into a feature branch and moves refs without changing files, verifying both diff panes, tab placement, and unsaved-buffer preservation. The branch-picker check clicks the comparison section, switches branch in place, opens a new comparison with Space `gb`, and verifies the repository is untouched. The diff-scroll check sends real mouse-wheel events over unfocused panes and verifies synchronized scrolling, direction locking, and ordinary-window behavior.
+The Python check exercises two independent `.venv` environments (including a nested monorepo package), real dependency/type navigation, hover, cross-file references, workspace symbols, type diagnostics, Ruff lint shown only where Ruff is configured, and Python syntax parsing. The languages check verifies lua-language-server with Neovim API types, Tree-sitter highlighting for TOML/YAML/JSON/Dockerfile/shell/commit messages, and formatting with the project's own Ruff. The gitsigns check verifies change markers, next-change jumps, and staging a single hunk in a disposable repository. The search check exercises all four pickers, unopened-file type results from a fresh session, and isolation between repositories. The diagnostics check verifies errors-only presentation, error-list toggling, and retention of the server's complete diagnostic data. The autosave check verifies FocusLost writes, normal save hooks, excluded buffers, and visible write failures. The commit-refresh check runs a real commit in the popup terminal and verifies that Current Changes clears after closing it without switching tabs. The branch-refresh check merges main into a feature branch and moves refs without changing files, verifying both diff panes, tab placement, and unsaved-buffer preservation. The branch-picker check clicks the comparison section, switches branch in place, opens a new comparison with Space `gb`, and verifies the repository is untouched. The diff-scroll check sends real mouse-wheel events over unfocused panes and verifies synchronized scrolling, direction locking, and ordinary-window behavior.
 
 For Sidekick, check CLI startup, file/selection prefill, tmux detach/reattach, and refresh after an external file edit in a disposable project. Prefill does not submit a model request; press Enter only when you intend to send it.
 

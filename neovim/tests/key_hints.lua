@@ -17,7 +17,7 @@ runner = coroutine.create(function()
   vim.keymap.set('n', '<leader>zx', function() invoked = invoked + 1 end, { desc = 'Test shortcut' })
   pause(200)
   for _, enabled in ipairs({ false, true, false, true, false }) do
-    if enabled or invoked > 0 then vim.api.nvim_input('?'); pause(150) end
+    if enabled or invoked > 0 then vim.api.nvim_input(' h'); pause(150) end
     vim.api.nvim_input(' ')
     pause(150)
     assert(popup() == enabled, 'Wrong popup visibility: expected ' .. tostring(enabled))
@@ -34,7 +34,7 @@ runner = coroutine.create(function()
     assert(not popup(), 'Popup remained after completing slow shortcut')
   end
   assert(invoked == 10, 'Shortcuts failed with hints enabled/disabled or slow presses')
-  print('PASS key hints: default off, repeated ? toggles, real popup visibility, fast and slow shortcuts execute')
+  print('PASS key hints: default off, repeated Space h toggles, real popup visibility, fast and slow shortcuts execute')
   vim.cmd('qa!')
 end)
 vim.schedule(resume)

@@ -204,7 +204,7 @@ require('lazy').setup({
         },
       })
 
-      vim.keymap.set('n', '?', function()
+      vim.keymap.set('n', '<leader>h', function()
         hints_enabled = not hints_enabled
         vim.api.nvim_echo({ { 'Key hints: ' .. (hints_enabled and 'on' or 'off') } }, false, {})
       end, { desc = 'Toggle automatic key hints' })
@@ -378,6 +378,40 @@ entrypoint()
             if vim.fn.executable(python) == 1 then config.settings.python.pythonPath = python end
           end,
         },
+        ruff = {
+          -- Only repositories that configure Ruff get its lint results, using that configuration (as CI does).
+          root_dir = function(bufnr, on_dir)
+            local name = vim.api.nvim_buf_get_name(bufnr)
+            if name == '' then return end
+            local configs = vim.fs.find({ 'ruff.toml', '.ruff.toml', 'pyproject.toml' }, { upward = true, path = vim.fs.dirname(name), limit = math.huge })
+            for _, config in ipairs(configs) do
+              if not vim.endswith(config, 'pyproject.toml') or table.concat(vim.fn.readfile(config), '\n'):find('[tool.ruff', 1, true) then
+                return on_dir(vim.fs.root(bufnr, python_root_markers))
+              end
+            end
+          end,
+          -- Ruff reports lint as warnings; show them as errors since CI fails on them.
+          handlers = (function()
+            local function as_errors(method)
+              return function(err, result, ctx)
+                for _, diagnostic in ipairs(result and (result.diagnostics or result.items) or {}) do
+                  diagnostic.severity = vim.lsp.protocol.DiagnosticSeverity.Error
+                end
+                return vim.lsp.handlers[method](err, result, ctx)
+              end
+            end
+            return { ['textDocument/publishDiagnostics'] = as_errors('textDocument/publishDiagnostics'), ['textDocument/diagnostic'] = as_errors('textDocument/diagnostic') }
+          end)(),
+          -- ty supplies hover; Ruff keeps diagnostics and its fix/organize-imports code actions.
+          on_init = function(client) client.server_capabilities.hoverProvider = nil end,
+          cmd = function(dispatchers, config)
+            local root = config.root_dir or vim.fn.getcwd()
+            -- Prefer the project's own Ruff so rules and versions match CI; Mason's is the fallback.
+            local ruff = vim.fn.executable(root .. '/.venv/bin/ruff') == 1 and root .. '/.venv/bin/ruff' or 'ruff'
+            return vim.lsp.rpc.start({ ruff, 'server' }, dispatchers, { cwd = root, env = config.cmd_env })
+          end,
+        },
+        lua_ls = {},
       }
 
       -- Explicit installs only; keep fallback tool versions reproducible.
@@ -386,6 +420,7 @@ entrypoint()
           { 'ty', version = '0.0.85' },
           { 'pyright', version = '1.1.414' },
           { 'ruff', version = '0.15.21' },
+          { 'lua-language-server', version = '3.19.1' },
           { 'stylua', version = 'v2.5.2' },
           { 'tree-sitter-cli', version = 'v0.26.11' },
         },
@@ -399,6 +434,32 @@ entrypoint()
         vim.lsp.enable(name)
       end
     end,
+  },
+
+  { -- Neovim API and plugin types for lua_ls when editing Lua.
+    'folke/lazydev.nvim',
+    ft = 'lua',
+    opts = { library = { { path = '${3rd}/luv/library', words = { 'vim%.uv' } } } },
+  },
+
+  { -- Git change markers, hunk actions and line blame in ordinary buffers.
+    'lewis6991/gitsigns.nvim',
+    event = { 'BufReadPre', 'BufNewFile' },
+    opts = {
+      on_attach = function(buf)
+        local gitsigns = require('gitsigns')
+        local function map(mode, keys, func, desc) vim.keymap.set(mode, keys, func, { buffer = buf, desc = desc }) end
+        local function selection() return { vim.fn.line('.'), vim.fn.line('v') } end
+        map('n', ']h', function() gitsigns.nav_hunk('next') end, 'Next Git change')
+        map('n', '[h', function() gitsigns.nav_hunk('prev') end, 'Previous Git change')
+        map('n', '<leader>gp', gitsigns.preview_hunk, 'Git preview change')
+        map('n', '<leader>gs', gitsigns.stage_hunk, 'Git stage/unstage change')
+        map('x', '<leader>gs', function() gitsigns.stage_hunk(selection()) end, 'Git stage/unstage selection')
+        map('n', '<leader>gr', gitsigns.reset_hunk, 'Git reset change')
+        map('x', '<leader>gr', function() gitsigns.reset_hunk(selection()) end, 'Git reset selection')
+        map('n', '<leader>gl', function() gitsigns.blame_line({ full = true }) end, 'Git blame line')
+      end,
+    },
   },
 
   { -- Autoformat
@@ -439,6 +500,10 @@ entrypoint()
         lua = { 'stylua' },
         python = { 'ruff_format' },
       },
+      -- Format with the project's own Ruff when installed, matching CI's format check.
+      formatters = {
+        ruff_format = { command = function(self, ctx) return require('conform.util').find_executable({ '.venv/bin/ruff' }, 'ruff')(self, ctx) end },
+      },
     },
   },
 
@@ -446,19 +511,6 @@ entrypoint()
     'saghen/blink.cmp',
     event = 'VimEnter',
     version = '1.*',
-    dependencies = {
-      -- Snippet Engine
-      {
-        'L3MON4D3/LuaSnip',
-        version = '2.*',
-        build = (function()
-          -- Build Step is needed for regex support in snippets.
-          if vim.fn.has('win32') == 1 or vim.fn.executable('make') == 0 then return end
-          return 'make install_jsregexp'
-        end)(),
-        opts = {},
-      },
-    },
     --- @module 'blink.cmp'
     --- @type blink.cmp.Config
     opts = {
@@ -475,10 +527,12 @@ entrypoint()
       },
 
       sources = {
-        default = { 'lsp', 'path', 'snippets' },
+        default = { 'lsp', 'path', 'snippets', 'lazydev' },
+        providers = { lazydev = { name = 'LazyDev', module = 'lazydev.integrations.blink', score_offset = 100 } },
       },
 
-      snippets = { preset = 'luasnip' },
+      -- Built-in vim.snippet expands LSP snippets; no separate snippet engine.
+      snippets = { preset = 'default' },
 
       -- Lua matcher avoids downloading the prebuilt Rust binary.
       fuzzy = { implementation = 'lua' },
@@ -733,7 +787,7 @@ entrypoint()
       local warned = {}
       vim.api.nvim_create_autocmd('FileType', {
         group = vim.api.nvim_create_augroup('kickstart-treesitter', { clear = true }),
-        pattern = { 'python', 'sh', 'diff', 'lua', 'markdown', 'query', 'vim', 'help' },
+        pattern = { 'python', 'sh', 'bash', 'diff', 'lua', 'markdown', 'query', 'vim', 'help', 'toml', 'yaml', 'json', 'jsonc', 'dockerfile', 'gitcommit' },
         callback = function(ev)
           local ok, err = pcall(vim.treesitter.start, ev.buf)
           if ok then return end

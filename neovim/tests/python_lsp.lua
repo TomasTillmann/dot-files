@@ -24,7 +24,10 @@ vim.schedule(function()
       local root = base .. '/' .. name
       local module = 'nvim_venv_probe_' .. name
       vim.fn.mkdir(root, 'p')
-      write(root .. '/pyproject.toml', { '[project]', 'name = "nvim-test-' .. name .. '"', 'version = "0.0.0"' })
+      -- Only alpha configures Ruff; beta must get no Ruff results.
+      local pyproject = { '[project]', 'name = "nvim-test-' .. name .. '"', 'version = "0.0.0"' }
+      if name == 'alpha' then vim.list_extend(pyproject, { '[tool.ruff.lint]', 'select = ["F401"]' }) end
+      write(root .. '/pyproject.toml', pyproject)
       command({ 'uv', 'venv', '--no-project', '--no-python-downloads', root .. '/.venv' })
       local site = command({ root .. '/.venv/bin/python', '-c', 'import sysconfig; print(sysconfig.get_path("purelib"))' })
       local dependency = site .. '/' .. module .. '.py'
@@ -51,6 +54,7 @@ vim.schedule(function()
         'label: str = widget.name',
         'answer: int = token()',
         'broken: int = "intentional type mismatch"',
+        'import os',
       }
       write(source_root .. '/app.py', source)
       vim.cmd.edit(vim.fn.fnameescape(source_root .. '/app.py'))
@@ -108,8 +112,25 @@ vim.schedule(function()
         end, 50),
         'Expected type-error diagnostic was not published'
       )
+      local linters = vim.lsp.get_clients({ bufnr = buf, name = 'ruff' })
+      if name == 'alpha' then
+        assert(#linters == 1 and vim.uv.fs_realpath(linters[1].config.root_dir) == root, 'Ruff did not attach to the Ruff-configured project')
+        assert(not linters[1]:supports_method('textDocument/hover', buf), 'Ruff should leave hover to ty')
+        assert(
+          vim.wait(30000, function()
+            for _, diagnostic in ipairs(vim.diagnostic.get(buf, { severity = vim.diagnostic.severity.ERROR })) do
+              if diagnostic.lnum == 7 and diagnostic.code == 'F401' then return true end
+            end
+            return false
+          end, 50),
+          'Configured Ruff rule was not shown as an error'
+        )
+      else
+        assert(#linters == 0, 'Ruff attached to a project without Ruff configuration')
+      end
       for _, diagnostic in ipairs(vim.diagnostic.get(buf)) do
-        assert(diagnostic.source == 'Pyright', 'Unexpected diagnostic source: ' .. tostring(diagnostic.source))
+        local ruff = name == 'alpha' and diagnostic.source == 'Ruff' and diagnostic.code == 'F401'
+        assert(diagnostic.source == 'Pyright' or ruff, 'Unexpected diagnostic: ' .. tostring(diagnostic.source) .. ' ' .. tostring(diagnostic.code))
         assert(
           diagnostic.code ~= 'reportMissingImports' and diagnostic.code ~= 'reportMissingModuleSource',
           'The project .venv import did not resolve: ' .. diagnostic.message
@@ -136,7 +157,7 @@ vim.schedule(function()
       local mapping = vim.fn.maparg(key, 'n', false, true)
       assert(mapping.buffer == 0 and type(mapping.callback) == 'function', 'Global type-search key is missing')
       verified[#verified + 1] = { client = client.id, buf = buf, root = root }
-      print('PASS ' .. name .. ': root, .venv import, hover, definitions, references, types, diagnostics, Tree-sitter, type-search key')
+      print('PASS ' .. name .. ': root, .venv import, hover, definitions, references, types, Pyright/Ruff diagnostics, Tree-sitter, type-search key')
     end
 
     assert(verified[1].client ~= verified[2].client, 'Projects unexpectedly share an LSP client')
