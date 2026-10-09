@@ -742,14 +742,24 @@ entrypoint()
       -- Start screen with essential keybinds
       local starter = require('mini.starter')
 
-      -- Keep file-tree access available on the starter screen
+      -- The letters shown next to start-screen items open them directly (instead of filtering by name).
       vim.api.nvim_create_autocmd('User', {
         pattern = 'MiniStarterOpened',
-        callback = function(ev) vim.keymap.set('n', '-', '<cmd>Neotree filesystem left<cr>', { buffer = ev.buf, desc = 'Open file tree' }) end,
+        callback = function()
+          -- At startup this event is delayed, so the current buffer may no longer be the start screen.
+          local buf = vim.iter(vim.api.nvim_list_bufs()):find(function(b) return vim.api.nvim_buf_is_loaded(b) and vim.bo[b].filetype == 'ministarter' end)
+          if not buf then return end
+          local function map(key, action, desc) vim.keymap.set('n', key, action, { buffer = buf, desc = desc }) end
+          map('f', function() require('search').files() end, 'Find file')
+          map('t', function() require('search').types() end, 'Find type')
+          map('g', function() require('search').grep() end, 'Grep search')
+          map('k', '<cmd>Telescope keymaps<cr>', 'Keymaps')
+          map('-', '<cmd>Neotree filesystem left<cr>', 'Open file tree')
+        end,
       })
 
       starter.setup({
-        query_updaters = 'abcdefghijklmnopqrstuvwxyz0_-.', -- Reserve 1–9 for tab switching.
+        query_updaters = 'abcdehijlmnopqrsuvwxyz0_.', -- f/t/g/k/- are shortcuts; 1–9 switch tabs.
         header = table.concat({
           '┌─────────────────────────────────────┐',
           '│            NEOVIM                   │',
