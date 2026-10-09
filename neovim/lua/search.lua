@@ -7,9 +7,38 @@ local function root()
   return vim.fs.root(dir, '.git') or vim.fs.root(dir, { 'pyproject.toml', 'pyrightconfig.json' }) or vim.fn.getcwd()
 end
 
+local function editing(win)
+  local buf = vim.api.nvim_win_get_buf(win)
+  return vim.api.nvim_win_get_config(win).relative == '' and (vim.bo[buf].buftype == '' or vim.bo[buf].filetype == 'ministarter')
+end
+
+-- Telescope target window: picks from Git tabs open in the Panel tab; Neo-tree redirects files opened in its window.
+function M.selection_window()
+  if vim.t.diffview_title then
+    local tabs = vim.api.nvim_list_tabpages()
+    local panel = vim.iter(tabs):find(function(tab) return vim.t[tab].workspace_title == 'Panel' end)
+      or vim.iter(tabs):find(function(tab) return not vim.t[tab].diffview_title end)
+    if panel then
+      vim.api.nvim_set_current_tabpage(panel)
+    else
+      vim.cmd('0tabnew')
+      vim.t.workspace_title = 'Panel'
+    end
+  elseif vim.bo.filetype ~= 'neo-tree' then
+    return 0
+  end
+  if editing(0) then return vim.api.nvim_get_current_win() end
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if editing(win) then return win end
+  end
+  vim.cmd.vnew()
+  return vim.api.nvim_get_current_win()
+end
+
 function M.files() builtin.find_files({ cwd = root() }) end
 function M.grep() builtin.live_grep({ cwd = root() }) end
-function M.buffer() builtin.current_buffer_fuzzy_find() end
+-- Jumps within the current buffer, including diff panes.
+function M.buffer() builtin.current_buffer_fuzzy_find({ get_selection_window = function() return 0 end }) end
 
 local starting = false
 function M.types()
@@ -24,7 +53,7 @@ function M.types()
   end
 
   -- Workspace requests need an attached buffer, even when invoked from the tree/start screen.
-  for _, client in ipairs(vim.lsp.get_clients({ name = 'pyright', method = 'workspace/symbol' })) do
+  for _, client in ipairs(vim.lsp.get_clients({ name = 'ty', method = 'workspace/symbol' })) do
     if vim.uv.fs_realpath(client.root_dir) == vim.uv.fs_realpath(cwd) then
       for buf in pairs(client.attached_buffers) do
         if vim.api.nvim_buf_is_loaded(buf) then return show(buf) end

@@ -232,16 +232,8 @@ require('lazy').setup({
       require('telescope').setup({
         defaults = {
           layout_config = { width = 0.98, horizontal = { preview_width = 0.5 } },
-          -- Neo-tree redirects files opened in its window, which otherwise loses the selected line.
-          get_selection_window = function()
-            if vim.bo.filetype ~= 'neo-tree' then return 0 end
-            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-              local buf = vim.api.nvim_win_get_buf(win)
-              if vim.api.nvim_win_get_config(win).relative == '' and (vim.bo[buf].buftype == '' or vim.bo[buf].filetype == 'ministarter') then return win end
-            end
-            vim.cmd.vnew()
-            return vim.api.nvim_get_current_win()
-          end,
+          -- Git tabs send files to the Panel tab; Neo-tree would otherwise lose the selected line.
+          get_selection_window = function() return require('search').selection_window() end,
         },
         extensions = {
           ['ui-select'] = { require('telescope.themes').get_dropdown() },
@@ -333,11 +325,35 @@ require('lazy').setup({
 
       local capabilities = require('blink.cmp').get_lsp_capabilities()
 
-      -- Use project Pyright rules and the workspace virtual environment.
+      -- Workspace members can have pyproject.toml files but share an ancestor's .venv.
+      local python_root_markers = { '.venv', 'pyrightconfig.json', 'ty.toml', 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', 'Pipfile', '.git' }
+
+      -- ty answers navigation, hover, completion and symbols; Pyright reports the same errors as the project's typecheck task.
       local servers = {
+        ty = {
+          root_markers = python_root_markers,
+          -- No diagnostics from ty: drop both pushed and pulled results.
+          handlers = { ['textDocument/publishDiagnostics'] = function() end, ['textDocument/diagnostic'] = function() end },
+          cmd = function(dispatchers, config)
+            local root = config.root_dir or vim.fn.getcwd()
+            local venv = root .. '/.venv'
+            -- Prefer the project's own ty; Mason's pinned ty is the fallback.
+            local ty = vim.fn.executable(venv .. '/bin/ty') == 1 and venv .. '/bin/ty' or 'ty'
+            local env = config.cmd_env
+            if vim.fn.executable(venv .. '/bin/python') == 1 then
+              -- Select this project's .venv even when Neovim was started from another activated environment.
+              env = vim.tbl_extend('force', env or {}, { VIRTUAL_ENV = venv })
+            end
+            return vim.lsp.rpc.start({ ty, 'server' }, dispatchers, { cwd = root, env = env })
+          end,
+        },
         pyright = {
-          -- Workspace members can have pyproject.toml files but share an ancestor's .venv.
-          root_markers = { '.venv', 'pyrightconfig.json', 'pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt', 'Pipfile', '.git' },
+          root_markers = python_root_markers,
+          -- Diagnostics only: keep document sync and workspace features, drop navigation/completion so ty's results aren't duplicated.
+          on_init = function(client)
+            local caps = client.server_capabilities
+            client.server_capabilities = { textDocumentSync = caps.textDocumentSync, diagnosticProvider = caps.diagnosticProvider, workspace = caps.workspace }
+          end,
           cmd = function(dispatchers, config)
             local root = config.root_dir or vim.fn.getcwd()
             local python = root .. '/.venv/bin/python'
@@ -367,6 +383,7 @@ entrypoint()
       -- Explicit installs only; keep fallback tool versions reproducible.
       require('mason-tool-installer').setup({
         ensure_installed = {
+          { 'ty', version = '0.0.84' },
           { 'pyright', version = '1.1.414' },
           { 'ruff', version = '0.15.21' },
           { 'stylua', version = 'v2.5.2' },

@@ -55,17 +55,23 @@ vim.schedule(function()
       write(source_root .. '/app.py', source)
       vim.cmd.edit(vim.fn.fnameescape(source_root .. '/app.py'))
       local buf = vim.api.nvim_get_current_buf()
-      local client
+      local client, checker
       assert(
         vim.wait(30000, function()
-          local clients = vim.lsp.get_clients({ bufnr = buf, name = 'pyright' })
-          client = clients[1]
-          return #clients == 1 and client.initialized
+          local clients = vim.lsp.get_clients({ bufnr = buf, name = 'ty' })
+          local checkers = vim.lsp.get_clients({ bufnr = buf, name = 'pyright' })
+          client, checker = clients[1], checkers[1]
+          return #clients == 1 and #checkers == 1 and client.initialized and checker.initialized
         end, 50),
-        'Pyright did not attach to ' .. root
+        'ty and Pyright did not both attach to ' .. root
       )
-      assert(vim.uv.fs_realpath(client.config.root_dir) == root, 'Incorrect LSP root: ' .. tostring(client.config.root_dir))
-      assert(client.settings.python.pythonPath == root .. '/.venv/bin/python', 'Incorrect project interpreter')
+      for _, attached in ipairs({ client, checker }) do
+        assert(vim.uv.fs_realpath(attached.config.root_dir) == root, 'Incorrect LSP root: ' .. tostring(attached.config.root_dir))
+      end
+      assert(checker.settings.python.pythonPath == root .. '/.venv/bin/python', 'Incorrect project interpreter')
+      for _, method in ipairs({ 'textDocument/definition', 'textDocument/hover', 'textDocument/references', 'textDocument/completion', 'workspace/symbol' }) do
+        assert(not checker:supports_method(method, buf), 'Pyright should not answer ' .. method)
+      end
       assert(vim.fn.getcwd() == base, 'Opening a file unexpectedly changed cwd')
 
       local function request(method, params)
@@ -103,6 +109,7 @@ vim.schedule(function()
         'Expected type-error diagnostic was not published'
       )
       for _, diagnostic in ipairs(vim.diagnostic.get(buf)) do
+        assert(diagnostic.source == 'Pyright', 'Unexpected diagnostic source: ' .. tostring(diagnostic.source))
         assert(
           diagnostic.code ~= 'reportMissingImports' and diagnostic.code ~= 'reportMissingModuleSource',
           'The project .venv import did not resolve: ' .. diagnostic.message

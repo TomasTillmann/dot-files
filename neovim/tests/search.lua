@@ -1,5 +1,5 @@
 -- Run with the active config: env -u VIRTUAL_ENV nvim --headless '+luafile tests/search.lua'
--- Real mappings, Telescope pickers, ripgrep, and Pyright; only temporary projects are written.
+-- Real mappings, Telescope pickers, ripgrep, and ty; only temporary projects are written.
 local runner
 local function resume()
   local ok, err = coroutine.resume(runner)
@@ -20,7 +20,7 @@ end
 
 runner = coroutine.create(function()
   assert(not vim.env.VIRTUAL_ENV or vim.env.VIRTUAL_ENV == '', 'Run with VIRTUAL_ENV unset')
-  assert(#vim.lsp.get_clients({ name = 'pyright' }) == 0, 'Start with no Python files open')
+  assert(#vim.lsp.get_clients({ name = 'ty' }) == 0, 'Start with no Python files open')
   for _, key in ipairs({ 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR' }) do
     assert(not vim.env[key] or vim.env[key] == '', 'Run with ' .. key .. ' unset')
   end
@@ -104,7 +104,7 @@ runner = coroutine.create(function()
     vim.bo.modified = false
     assert(#vim.lsp.get_clients({ bufnr = scratch }) == 0, 'Scratch unexpectedly has an LSP client')
     assert(vim.fn.bufnr(target) == -1, 'Target was already opened')
-    if name == 'Alpha' then assert(#vim.lsp.get_clients({ name = 'pyright' }) == 0, 'First type search must start the server') end
+    if name == 'Alpha' then assert(#vim.lsp.get_clients({ name = 'ty' }) == 0, 'First type search must start the server') end
 
     local types = invoke('st')
     assert(types.original_bufnr == scratch, 'Hidden bootstrap replaced the starting buffer')
@@ -117,7 +117,7 @@ runner = coroutine.create(function()
     local rendered = table.concat(vim.api.nvim_buf_get_lines(types.results_bufnr, 0, -1, false), '\n')
     assert(rendered:find(typename, 1, true), 'Type result was not rendered before Enter')
     local client
-    for _, candidate in ipairs(vim.lsp.get_clients({ name = 'pyright' })) do
+    for _, candidate in ipairs(vim.lsp.get_clients({ name = 'ty' })) do
       if vim.uv.fs_realpath(candidate.root_dir) == root then client = candidate end
     end
     assert(client and client.initialized, 'Type picker did not initialize this project server')
