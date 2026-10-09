@@ -6,7 +6,7 @@ Symlink this repository’s `neovim` folder to `~/.config/nvim`. Editor/plugin s
 
 ## Install on another Mac
 
-The guide assumes the standard config path `~/.config/nvim` and macOS’s zsh shell. Use [Kitty’s guide](../kitty/README.md) for the matching terminal appearance. This Neovim setup has been tested with **Neovim 0.12.4**; the plugin and tool pins below are preserved. Homebrew installs its current application/runtime versions, so it does not freeze the complete OS or runtime environment.
+The guide assumes the standard config path `~/.config/nvim` and macOS’s zsh shell. Use [Kitty’s guide](../kitty/README.md) for the matching terminal appearance. This Neovim setup has been tested with **Neovim 0.12.5**; the plugin and tool pins below are preserved. Homebrew installs its current application/runtime versions, so it does not freeze the complete OS or runtime environment.
 
 ### 1. Install prerequisites
 
@@ -179,7 +179,7 @@ Restart Neovim after changing this setup. Use `:checkhealth vim.lsp` to inspect 
 
 ## Dependencies and updates
 
-Tested with Neovim **0.12.4** on macOS. Treat upgrading Neovim itself as a separate change from plugin updates. External tools: Git, tmux, an agent CLI, ripgrep, fd, a C compiler/make, and Python/Node tooling. `uv` is used by the integration checks.
+Tested with Neovim **0.12.5** on macOS. Treat upgrading Neovim itself as a separate change from plugin updates. External tools: Git, tmux, an agent CLI, ripgrep, fd, a C compiler/make, and Python/Node tooling. `uv` is used by the integration checks.
 
 Normal startup does **not** install managed plugins, Mason tools, or syntax parsers, or check for plugin updates. Missing Tree-sitter highlighting falls back to ordinary syntax and reports a repair command once per filetype. Missing/failing formatters allow saving and report errors; `:ConformInfo` shows details. If the plugin manager is missing, Neovim starts with basic editing and an installation hint.
 
