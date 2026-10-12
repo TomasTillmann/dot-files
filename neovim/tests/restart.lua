@@ -1,6 +1,6 @@
 -- Run: env -u VIRTUAL_ENV nvim --headless '+luafile tests/restart.lua'
 -- Real :restart: a Neovim with a terminal UI (in a pseudo-terminal) in a disposable Git repository,
--- driven over its socket. Verifies the workspace and open files come back without errors.
+-- driven over its socket. Verifies :restart starts fresh: workspace rebuilt, nothing from before restored, no errors.
 local runner, child, channel
 local function resume()
   local ok, err = coroutine.resume(runner)
@@ -77,13 +77,14 @@ runner = coroutine.create(function()
     local ok, decoded = pcall(vim.json.decode, table.concat(vim.fn.readfile(report), '\n'))
     return ok and decoded or nil
   end
-  local function check(expected_reason)
+  local function check(expected_reason, file_open)
     local s = assert(state(), 'Neovim stopped responding (blocked at an error prompt?)')
     assert(s.reason == expected_reason, 'Unexpected start reason: ' .. s.reason)
     assert(s.errmsg == '' and not s.blocking, 'Startup error: ' .. s.errmsg)
     assert(#s.tabs == 3, 'Expected Panel and two Git tabs, got ' .. vim.inspect(s.tabs))
     local panel, changes = s.tabs[1], s.tabs[2]
-    assert(panel.title == 'Panel' and panel.filetypes['neo-tree'] and panel.files['a.txt'], 'Panel lacks the tree or the open file: ' .. vim.inspect(panel))
+    assert(panel.title == 'Panel' and panel.filetypes['neo-tree'], 'Panel lacks the tree: ' .. vim.inspect(panel))
+    assert(not panel.files['a.txt'] == not file_open, (file_open and 'Panel lacks the open file: ' or 'Panel restored a file from before :restart: ') .. vim.inspect(panel))
     assert(changes.title == 'Current Changes' and changes.filetypes['DiffviewFiles'], 'Current Changes tab missing: ' .. vim.inspect(changes))
     assert(s.tabs[3].title == 'Changes against main', 'Branch comparison tab missing: ' .. vim.inspect(s.tabs[3]))
     assert(s.placeholders == 0, 'Session placeholder buffers were left behind')
@@ -98,26 +99,17 @@ runner = coroutine.create(function()
     local s = state()
     return s and s.tabs[1].files['a.txt']
   end, 'Could not open a.txt')
-  check('normal')
-  -- Load the Current Changes diff first: then that Git tab also shows the real a.txt, which must not survive as a stray tab.
-  vim.rpcnotify(channel, 'nvim_input', '2')
-  wait(function()
-    local s = state()
-    return s and s.tabs[2].files['a.txt']
-  end, 'Current Changes did not show the a.txt diff')
-  vim.rpcnotify(channel, 'nvim_input', '1')
-  pause(300)
-
+  check('normal', true)
   vim.rpcnotify(channel, 'nvim_input', ':restart<CR>')
   pause(1000)
   local last
   local restored = pcall(wait, function()
     last = connect() and state() or last
-    return last and last.reason == 'restart' and #last.tabs == 3 and last.tabs[1].files['a.txt'] and last.tabs[2].filetypes['DiffviewFiles']
+    return last and last.reason == 'restart!' and #last.tabs == 3 and last.tabs[2].filetypes['DiffviewFiles']
   end, 'timeout')
-  assert(restored, 'Workspace was not restored after :restart; last answer: ' .. vim.inspect(last))
-  check('restart')
-  print('PASS :restart: no session errors, Panel/tree/open file restored, Git tabs rebuilt, no placeholder buffers')
+  assert(restored, 'Workspace was not rebuilt after :restart; last answer: ' .. vim.inspect(last))
+  check('restart!', false)
+  print('PASS :restart: starts fresh with Panel/tree and Git tabs, nothing restored, no errors')
 
   pcall(vim.rpcnotify, channel, 'nvim_command', 'qa!')
   pause(500)

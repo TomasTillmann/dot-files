@@ -75,7 +75,21 @@ runner = coroutine.create(function()
   assert(count('DiffviewFiles') == 1, 'Closing the file tree should keep the Git panel')
   vim.cmd('DiffviewClose')
 
-  print('PASS side panel: Space b toggles the file tree and Git panels from any window, including empty diffs')
+  -- Z opens every folder under the cursor but never reads .venv or caches.
+  vim.fn.mkdir(root .. '/pkg/sub/deep', 'p'); vim.fn.writefile({ 'x' }, root .. '/pkg/sub/deep/m.py')
+  vim.fn.mkdir(root .. '/.venv/lib/site', 'p'); vim.fn.writefile({ 'x' }, root .. '/.venv/lib/site/big.py')
+  require('neo-tree.command').execute({ action = 'focus', source = 'filesystem', position = 'left', dir = root })
+  wait(function() return vim.bo.filetype == 'neo-tree' end, 'File tree did not take focus')
+  pause(1000) -- Let the tree finish loading and settle file-watcher refreshes from the new folders.
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+  vim.api.nvim_input('Z')
+  wait(function() return vim.fn.search('m\\.py', 'nw') > 0 end, 'Z did not open nested folders')
+  local tree = require('neo-tree.sources.manager').get_state('filesystem').tree
+  local venv = vim.iter(tree:get_nodes(tree:get_nodes()[1]:get_id())):find(function(node) return node.name == '.venv' end)
+  assert(venv and not venv:is_expanded() and not venv.loaded, ('Z should leave .venv closed and unread (expanded=%s, loaded=%s)'):format(venv and venv:is_expanded(), venv and venv.loaded))
+  require('neo-tree.command').execute({ action = 'close' })
+
+  print('PASS side panel: Space b toggles the file tree and Git panels from any window, including empty diffs; Z skips .venv')
   vim.cmd('qa!')
 end)
 vim.schedule(resume)

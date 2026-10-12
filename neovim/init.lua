@@ -55,25 +55,15 @@ vim.api.nvim_create_autocmd('VimEnter', {
   once = true,
   callback = function()
     if not package.loaded.lazy or #vim.api.nvim_list_uis() == 0 or #vim.api.nvim_list_tabpages() > 1 or vim.fn.argc() > 1 then return end
-    -- :restart restores its session after startup; the workspace is rebuilt then (SessionLoadPost below).
-    if vim.v.startreason == 'restart' then return end
     local directory = vim.fn.argc() == 0 and vim.fn.getcwd() or vim.fn.argv(0)
     if vim.fn.isdirectory(directory) == 1 then require('tabline').open_workspace(directory) end
   end,
 })
-local restoring_workspace = false
-vim.api.nvim_create_autocmd('SessionLoadPost', {
-  desc = 'Rebuild file tree and Git tabs after a session (including :restart) is restored',
-  callback = function()
-    -- Sessions fire this once per buffer (doautoall) inside autocmd windows; rebuild once, afterwards.
-    if not package.loaded.lazy or restoring_workspace then return end
-    restoring_workspace = true
-    vim.schedule(function()
-      restoring_workspace = false
-      require('tabline').restore_workspace()
-    end)
-  end,
-})
+-- :restart and ZR always start fresh, like opening Neovim again: no session, so no restored windows or tabs.
+vim.keymap.set('ca', 'restart', function()
+  return vim.fn.getcmdtype() == ':' and vim.fn.getcmdline() == 'restart' and 'restart!' or 'restart'
+end, { expr = true, desc = ':restart without restoring the session' })
+vim.keymap.set('n', 'ZR', '<cmd>restart!<cr>', { desc = 'Restart Neovim fresh' })
 
 -- Rebalance diff panes after resizing, including tabs resized while hidden.
 vim.api.nvim_create_autocmd({ 'VimResized', 'TabEnter' }, {
@@ -599,7 +589,7 @@ entrypoint()
       enable_git_status = false,
       sources = { 'filesystem', 'buffers' },
       default_component_configs = { diagnostics = { errors_only = true } },
-      window = { position = 'left', width = 34, mappings = { ['<space>'] = 'none' } }, -- Space stays the leader inside the tree.
+      window = { position = 'left', width = 34, mappings = { ['<space>'] = 'none', ['Z'] = function(state) require('side_panel').expand_all(state) end } }, -- Space stays the leader inside the tree; Z opens every folder under the cursor except .venv and caches.
       filesystem = {
         window = { mappings = { ['[g'] = 'none', [']g'] = 'none', ['og'] = 'none' } },
         check_gitignore_in_search = false,
