@@ -18,17 +18,32 @@ vim.o.wrap = false
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.o.mouse = 'a'
 
+-- kitty sends one wheel event per cell of trackpad travel; scrolling one line/column per event makes the text follow the finger.
+vim.o.mousescroll = 'ver:1,hor:1'
+
 -- ponytail: terminal wheel events lack gesture boundaries; infer a new gesture after idle.
-local scroll_axis, last_scroll = nil, 0
+local scroll_axis, last_scroll, sideways = nil, 0, 0
 local scroll_idle_ms = 150
+-- Cells are about half as wide as tall, so a slightly diagonal swipe sends sideways events first.
+-- A gesture locks to vertical on its first vertical event; it only goes sideways after this many sideways events with none vertical (about a 45° swipe).
+local sideways_to_lock = 4
 -- Native scrollbind only follows wheel events in the focused window.
 for _, direction in ipairs({ 'Up', 'Down', 'Left', 'Right' }) do
   local key = '<ScrollWheel' .. direction .. '>'
   vim.keymap.set({ 'n', 'x', 'i' }, key, function()
     local now = vim.uv.hrtime() / 1e6
     local axis = (direction == 'Left' or direction == 'Right') and 'horizontal' or 'vertical'
-    if not scroll_axis or now - last_scroll >= scroll_idle_ms then scroll_axis = axis end
+    if now - last_scroll >= scroll_idle_ms then scroll_axis, sideways = nil, 0 end
     last_scroll = now
+    if not scroll_axis then
+      if axis == 'vertical' then
+        scroll_axis = axis
+      else
+        sideways = sideways + 1
+        if sideways < sideways_to_lock then return '' end
+        scroll_axis = axis
+      end
+    end
     if axis ~= scroll_axis then return '' end
     local win = vim.fn.getmousepos().winid
     if win ~= 0 and vim.api.nvim_win_is_valid(win) and vim.wo[win].diff and vim.wo[win].scrollbind then
@@ -55,8 +70,7 @@ vim.api.nvim_create_autocmd('VimEnter', {
   once = true,
   callback = function()
     if not package.loaded.lazy or #vim.api.nvim_list_uis() == 0 or #vim.api.nvim_list_tabpages() > 1 or vim.fn.argc() > 1 then return end
-    -- oil renames a directory argument to oil:///path/ before VimEnter.
-    local directory = vim.fn.argc() == 0 and vim.fn.getcwd() or (vim.fn.argv(0):gsub('^oil://', ''))
+    local directory = vim.fn.argc() == 0 and vim.fn.getcwd() or vim.fn.argv(0)
     if vim.fn.isdirectory(directory) == 1 then require('tabline').open_workspace(directory) end
   end,
 })
@@ -570,6 +584,7 @@ entrypoint()
           treesitter = true,
           which_key = true,
           mini = { enabled = true },
+          neotree = true,
         },
       })
     end,
@@ -617,18 +632,28 @@ entrypoint()
     end,
   },
 
-  { -- File browser: a directory opens as an editable buffer; rename, create or delete by editing lines, then :w.
-    'stevearc/oil.nvim',
-    lazy = false, -- Replaces netrw, so `nvim .` opens the directory in oil.
-    dependencies = { 'nvim-tree/nvim-web-devicons' },
+  { -- Folder tree on demand: Space e shows it full-window in place of the current buffer; no docked side panel.
+    'nvim-neo-tree/neo-tree.nvim',
+    branch = 'v3.x',
+    lazy = false, -- Replaces netrw, so `nvim .` and :edit on a directory show the tree.
+    dependencies = { 'nvim-lua/plenary.nvim', 'MunifTanjim/nui.nvim', 'nvim-tree/nvim-web-devicons' },
     keys = {
+      { '<leader>e', function() require('file_tree').toggle() end, desc = 'Toggle file tree' },
       { '<leader>b', function() require('side_panel').toggle() end, desc = 'Toggle Git side panel' },
-      { '-', '<cmd>Oil<cr>', desc = 'Open parent directory' },
     },
     opts = {
-      view_options = { show_hidden = true, is_always_hidden = function(name) return name == '.git' end },
-      -- Ctrl h/l keep moving between splits instead of oil's split-open and refresh.
-      keymaps = { ['<C-h>'] = false, ['<C-l>'] = false },
+      enable_git_status = false,
+      sources = { 'filesystem' },
+      default_component_configs = { diagnostics = { errors_only = true } },
+      window = { mappings = { ['<space>'] = 'none', ['Z'] = function(state) require('file_tree').expand_all(state) end } }, -- Space stays the leader inside the tree; Z opens every folder under the cursor except .venv and caches.
+      filesystem = {
+        hijack_netrw_behavior = 'open_current', -- A directory buffer becomes the tree in the same window.
+        window = { mappings = { ['[g'] = 'none', [']g'] = 'none', ['og'] = 'none' } },
+        check_gitignore_in_search = false,
+        use_libuv_file_watcher = true,
+        -- Dotfiles and gitignored files (.venv, caches) start hidden; H shows or hides them. .git is never shown.
+        filtered_items = { hide_dotfiles = true, hide_gitignored = true, never_show = { '.git' } },
+      },
     },
   },
 
@@ -791,12 +816,12 @@ entrypoint()
           map('t', function() require('search').types() end, 'Find type')
           map('g', function() require('search').grep() end, 'Grep search')
           map('k', '<cmd>Telescope keymaps<cr>', 'Keymaps')
-          map('-', '<cmd>Oil<cr>', 'Browse files')
+          map('e', function() require('file_tree').toggle() end, 'File tree')
         end,
       })
 
       starter.setup({
-        query_updaters = 'abcdehijlmnopqrsuvwxyz0_.', -- f/t/g/k/- are shortcuts; 1–9 switch tabs.
+        query_updaters = 'abcdhijlmnopqrsuvwxyz0_.', -- f/t/g/k/e are shortcuts; 1–9 switch tabs.
         header = table.concat({
           '┌─────────────────────────────────────┐',
           '│            NEOVIM                   │',
@@ -805,7 +830,7 @@ entrypoint()
         items = {
           { name = 'Find file      f', action = function() require('search').files() end, section = 'Search' },
           { name = 'Find type      t', action = function() require('search').types() end, section = 'Search' },
-          { name = 'Browse files   -', action = 'Oil', section = 'Files' },
+          { name = 'File tree      e', action = function() require('file_tree').toggle() end, section = 'Files' },
           { name = 'Grep search    g', action = function() require('search').grep() end, section = 'Search' },
           { name = 'Keymaps        k', action = 'Telescope keymaps', section = 'Help' },
           starter.sections.builtin_actions(),
@@ -813,7 +838,7 @@ entrypoint()
         footer = table.concat({
           '',
           '─────────────────────────────────────────',
-          ' -  browse files    <Space>?  search keymaps',
+          ' <Space>e  file tree    <Space>?  keymaps',
           '─────────────────────────────────────────',
         }, '\n'),
         content_hooks = {

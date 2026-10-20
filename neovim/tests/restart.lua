@@ -83,7 +83,7 @@ runner = coroutine.create(function()
     assert(s.errmsg == '' and not s.blocking, 'Startup error: ' .. s.errmsg)
     assert(#s.tabs == 3, 'Expected Panel and two Git tabs, got ' .. vim.inspect(s.tabs))
     local panel, changes = s.tabs[1], s.tabs[2]
-    assert(panel.title == 'Panel', 'Panel tab missing: ' .. vim.inspect(panel))
+    assert(panel.title == vim.fs.basename(repo), 'Panel tab not labeled with the folder name: ' .. vim.inspect(panel))
     assert(not panel.files['a.txt'] == not file_open, (file_open and 'Panel lacks the open file: ' or 'Panel restored a file from before :restart: ') .. vim.inspect(panel))
     assert(changes.title == 'Current Changes' and changes.filetypes['DiffviewFiles'], 'Current Changes tab missing: ' .. vim.inspect(changes))
     assert(s.tabs[3].title == 'Changes against main', 'Branch comparison tab missing: ' .. vim.inspect(s.tabs[3]))

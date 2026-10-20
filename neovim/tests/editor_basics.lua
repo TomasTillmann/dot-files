@@ -26,7 +26,7 @@ runner = coroutine.create(function()
   -- Start screen, theme and status line.
   assert(vim.bo.filetype == 'ministarter', 'Start screen did not open: ' .. vim.bo.filetype)
   local screen = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
-  for _, item in ipairs({ 'Find file', 'Find type', 'Browse files', 'Grep search', 'Keymaps' }) do
+  for _, item in ipairs({ 'Find file', 'Find type', 'File tree', 'Grep search', 'Keymaps' }) do
     assert(screen:find(item, 1, true), 'Start screen is missing ' .. item)
   end
   assert(vim.g.colors_name and vim.g.colors_name:find('^rose%-pine'), 'Rose Pine is not the active theme')
@@ -145,20 +145,20 @@ runner = coroutine.create(function()
   vim.cmd.only()
   print('PASS windows: splits open right/below, Ctrl-h/j/k/l move focus')
 
-  -- - opens the file's folder in oil with the cursor on the file; - again goes up a folder.
   vim.cmd.cd(vim.fn.fnameescape(base))
+  -- Space e shows the folder tree in the same window, on the current file; Space e again returns to the file.
   vim.cmd.edit(vim.fn.fnameescape(file))
-  keys('-')
-  wait(function() return vim.bo.filetype == 'oil' end, '- did not open oil')
-  local function same(a, b) return vim.fn.resolve(vim.fs.normalize(a)) == vim.fn.resolve(vim.fs.normalize(b)) end
+  local file_win, file_buf = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
+  keys(' e')
+  wait(function() return vim.bo.filetype == 'neo-tree' end, 'Space e did not open the folder tree')
+  assert(vim.api.nvim_get_current_win() == file_win, 'Space e opened the tree in another window')
   wait(function()
-    local entry = require('oil').get_cursor_entry()
-    return entry and entry.name == vim.fs.basename(file)
-  end, '- did not put the cursor on the current file')
-  assert(same(require('oil').get_current_dir(), vim.fs.dirname(file)), '- opened the wrong folder: ' .. require('oil').get_current_dir())
-  keys('-')
-  wait(function() return same(require('oil').get_current_dir(), vim.fs.dirname(vim.fs.dirname(file))) end, '- in oil did not go up a folder')
-  print('PASS file browser: - opens oil on the current file, - again goes up')
+    local node = require('neo-tree.sources.manager').get_state('filesystem', nil, file_win).tree:get_node()
+    return node and node.path == file
+  end, 'Space e did not select the current file in the tree')
+  keys(' e')
+  wait(function() return vim.api.nvim_get_current_buf() == file_buf end, 'Space e in the tree did not return to the file')
+  print('PASS folder tree: Space e toggles a full-window tree on the current file')
 
   vim.cmd('qa!')
 end)

@@ -9,6 +9,6 @@ Based on Joel Hooks' Kickstart config; provenance and upstream links are in READ
 - Show errors only in diagnostic UI and notifications, with underlines/markers but no inline diagnostic text; preserve project type-checking rules and underlying diagnostic data.
 - Sidekick provides agent CLI sessions with tmux persistence. Keep NES/AI autocomplete disabled and retain normal CLI permission prompts.
 - Use a disposable Git/Python project for destructive Git tests; never discard user work for testing.
-- Validate startup, Python LSP and .venv imports, live search, the oil file browser, and Git views after changes.
+- Validate startup, Python LSP and .venv imports, live search, the Space e folder tree, and Git views after changes.
 - Keep runtime caches, local environments, credentials, and test outputs out of this repository.
 - Update README.md when changing keys or setup steps.

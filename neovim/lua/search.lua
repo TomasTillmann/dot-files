@@ -9,20 +9,21 @@ end
 
 local function editing(win)
   local buf = vim.api.nvim_win_get_buf(win)
-  return vim.api.nvim_win_get_config(win).relative == '' and (vim.bo[buf].buftype == '' or vim.bo[buf].filetype == 'ministarter' or vim.bo[buf].filetype == 'oil')
+  return vim.api.nvim_win_get_config(win).relative == '' and (vim.bo[buf].buftype == '' or vim.bo[buf].filetype == 'ministarter' or vim.bo[buf].filetype == 'neo-tree')
 end
 
 -- Telescope target window: picks from Git tabs open in the Panel tab.
 function M.selection_window()
   if not vim.t.diffview_title then return 0 end
   local tabs = vim.api.nvim_list_tabpages()
-  local panel = vim.iter(tabs):find(function(tab) return vim.t[tab].workspace_title == 'Panel' end)
+  local panel = vim.iter(tabs):find(function(tab) return vim.t[tab].workspace_panel end)
     or vim.iter(tabs):find(function(tab) return not vim.t[tab].diffview_title end)
   if panel then
     vim.api.nvim_set_current_tabpage(panel)
   else
     vim.cmd('0tabnew')
-    vim.t.workspace_title = 'Panel'
+    vim.t.workspace_panel = true
+    vim.t.workspace_title = vim.fs.basename(vim.fn.getcwd())
   end
   if editing(0) then return vim.api.nvim_get_current_win() end
   for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do

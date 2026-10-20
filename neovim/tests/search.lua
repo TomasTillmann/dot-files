@@ -161,26 +161,26 @@ runner = coroutine.create(function()
         { key = 'st', query = 'Bootstrap' .. name, target = root .. '/' .. files[1], line = 2 },
         { key = 'sg', query = 'def Search' .. name .. 'Function', target = target, line = 5 },
       }) do
-        vim.cmd('Oil')
-        wait_for(function() return vim.bo.filetype == 'oil' and vim.api.nvim_buf_line_count(0) > 1 end, 'oil did not render')
+        require('file_tree').toggle()
+        wait_for(function() return vim.bo.filetype == 'neo-tree' and vim.api.nvim_buf_line_count(0) > 1 end, 'folder tree did not render')
         local picker = invoke(case.key)
         query(case.query)
         wait_for(function()
           local rows = entries(picker)
           return #rows == 1 and state.get_selected_entry() == rows[1] and path(rows[1], root) == case.target and rows[1].lnum == case.line
-        end, case.key .. ' from oil did not find the expected location')
+        end, case.key .. ' from the folder tree did not find the expected location')
         vim.api.nvim_input('<CR>')
-        wait_for(function() return vim.api.nvim_buf_get_name(0) == case.target end, case.key .. ' from oil did not open the target')
+        wait_for(function() return vim.api.nvim_buf_get_name(0) == case.target end, case.key .. ' from the folder tree did not open the target')
         local settled = vim.uv.hrtime() + 250000000
         wait_for(function() return vim.uv.hrtime() >= settled end, 'Window events did not settle')
         assert(vim.api.nvim_get_current_win() == editor, case.key .. ' did not use the existing editing window')
         assert(
           vim.api.nvim_buf_get_name(0) == case.target and vim.api.nvim_win_get_cursor(0)[1] == case.line,
-          case.key .. ' from oil lost the selected line: ' .. vim.inspect(vim.api.nvim_win_get_cursor(0))
+          case.key .. ' from the folder tree lost the selected line: ' .. vim.inspect(vim.api.nvim_win_get_cursor(0))
         )
         vim.cmd.edit(vim.fn.fnameescape(root .. '/pyproject.toml'))
       end
-      print('PASS oil: type and grep Enter open in the oil window at the exact line')
+      print('PASS folder tree: type and grep Enter open in the tree window at the exact line')
     end
     print('PASS ' .. name .. ': global keys, hidden LSP bootstrap, live type/file/buffer/repository results, type Enter jump')
   end

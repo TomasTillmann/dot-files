@@ -30,7 +30,9 @@ function M.open_workspace(directory)
   end
   if git('rev-parse', '--show-toplevel').code ~= 0 then return end
   local panel = vim.api.nvim_get_current_tabpage()
-  vim.t[panel].workspace_title = 'Panel'
+  -- The editing tab is labeled with the opened folder's name, e.g. `nvim .` in ~/code/api shows `api`.
+  vim.t[panel].workspace_panel = true
+  vim.t[panel].workspace_title = vim.fs.basename(vim.fs.normalize(directory))
   require('diffview').open({ '-C' .. directory })
   for _, base in ipairs({ 'origin/main', 'main' }) do
     if git('merge-base', base, 'HEAD').code == 0 then

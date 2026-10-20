@@ -74,9 +74,33 @@ runner = coroutine.create(function()
   wheel(right, 'down')
   wait(function() return top(left) > before_mixed end, 'Position away from vertical boundary')
 
+  -- A diagonal swipe sends a few sideways events before the first vertical one; it still scrolls only vertically.
+  pause(180)
+  local before_diagonal = top(left)
+  for _ = 1, 3 do
+    wheel(right, 'right')
+    pause(10)
+  end
+  assert(column(left) == 0 and column(right) == 0, 'Sideways events at the start of a diagonal swipe scrolled sideways')
+  wheel(right, 'down')
+  wait(function() return top(left) > before_diagonal end, 'Diagonal swipe did not scroll vertically')
+  wheel(right, 'right')
+  pause(20)
+  assert(column(left) == 0 and column(right) == 0, 'Diagonal swipe leaked horizontal scrolling after locking vertical')
+
+  -- One wheel event moves one line or column, so the text follows the finger.
+  pause(180)
+  local before_line = top(left)
+  wheel(right, 'down')
+  wait(function() return top(left) > before_line end, 'Single wheel event did not scroll')
+  assert(top(left) == before_line + 1, 'A wheel event scrolled more than one line: ' .. (top(left) - before_line))
+
   pause(180)
   vim.api.nvim_set_current_win(sidebar)
-  wheel(right, 'right')
+  for _ = 1, 4 do
+    wheel(right, 'right')
+    pause(10)
+  end
   wait(function() return column(left) > 0 and column(right) > 0 end, 'Horizontal scrolling did not synchronize after quiet period')
   local horizontal_top, horizontal_column = top(left), column(left)
   for _, direction in ipairs({ 'down', 'up' }) do
@@ -110,12 +134,15 @@ runner = coroutine.create(function()
   assert(vim.api.nvim_get_current_win() == left, 'Ordinary window stole focus')
   assert(top(left) == before, 'Scrolling sidebar moved the diff')
   pause(180)
-  wheel(sidebar, 'right')
+  for _ = 1, 4 do
+    wheel(sidebar, 'right')
+    pause(10)
+  end
   wait(function() return column(sidebar) > 0 end, 'Ordinary horizontal wheel scroll was swallowed')
   assert(vim.api.nvim_get_current_win() == left, 'Ordinary horizontal scrolling stole focus')
   assert(column(left) == 0 and column(right) == 0, 'Scrolling sidebar horizontally moved the diff')
   assert(vim.v.errmsg == '', vim.v.errmsg)
-  print('PASS mouse scrolling: gesture axis lock, mixed-event continuity, quiet reset, synchronized diff panes, native ordinary panes')
+  print('PASS mouse scrolling: gesture axis lock, mixed-event continuity, diagonal swipes stay vertical, one line per event, quiet reset, synchronized diff panes, native ordinary panes')
   vim.cmd('qa!')
 end)
 vim.schedule(resume)

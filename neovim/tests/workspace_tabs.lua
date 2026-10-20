@@ -50,7 +50,7 @@ runner = coroutine.create(function()
       open(root)
       local tabs = vim.api.nvim_list_tabpages()
       assert(#tabs == 3 and vim.api.nvim_get_current_tabpage() == tabs[1], 'Startup tabs/focus')
-      assert(vim.t[tabs[1]].workspace_title == 'Panel')
+      assert(vim.t[tabs[1]].workspace_title == vim.fs.basename(root), 'Panel tab is not labeled with the folder name: ' .. tostring(vim.t[tabs[1]].workspace_title))
       assert(vim.t[tabs[2]].diffview_title == 'Current Changes')
       assert(vim.t[tabs[3]].diffview_title == 'Changes against main')
       for index = 2, 3 do
