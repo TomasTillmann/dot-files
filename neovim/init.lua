@@ -282,6 +282,7 @@ require('lazy').setup({
         callback = function(event)
           local buf = event.buf
           vim.keymap.set('n', 'grr', builtin.lsp_references, { buffer = buf, desc = '[G]oto [R]eferences' })
+          vim.keymap.set('n', 'grc', builtin.lsp_incoming_calls, { buffer = buf, desc = '[G]oto [C]allers: functions that call this one' })
           vim.keymap.set('n', 'gri', builtin.lsp_implementations, { buffer = buf, desc = '[G]oto [I]mplementation' })
           vim.keymap.set('n', 'grd', builtin.lsp_definitions, { buffer = buf, desc = '[G]oto [D]efinition' })
           vim.keymap.set('n', 'gd', builtin.lsp_definitions, { buffer = buf, desc = 'Go to definition' })
@@ -626,6 +627,11 @@ entrypoint()
           ['@property'] = { fg = 'iris' },
           -- ty marks imported modules as namespaces; color them in a warm amber gold instead of plain text.
           ['@lsp.type.namespace.python'] = { fg = '#dfa548' },
+          -- Sticky scroll lines keep the editor's own background, with no line underneath.
+          TreesitterContext = { bg = 'NONE' },
+          TreesitterContextLineNumber = { fg = 'muted', bg = 'NONE' },
+          TreesitterContextBottom = { underline = false },
+          TreesitterContextLineNumberBottom = { underline = false },
         },
       })
       vim.cmd.colorscheme('rose-pine')
@@ -872,6 +878,16 @@ entrypoint()
         end,
       })
     end,
+  },
+
+  { -- Sticky scroll, like VS Code: the class/function lines enclosing the cursor stay pinned at the top once their start scrolls away.
+    'nvim-treesitter/nvim-treesitter-context',
+    event = { 'BufReadPost', 'BufNewFile' },
+    opts = {
+      max_lines = 5, -- At most five nested scopes.
+      multiline_threshold = 1, -- One line per scope, even for multi-line signatures.
+      trim_scope = 'outer', -- When nesting exceeds max_lines, drop the outermost scopes.
+    },
   },
 }, {
   install = { missing = false }, -- Use :Lazy install / restore explicitly.
