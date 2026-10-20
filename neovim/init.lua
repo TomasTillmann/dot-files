@@ -627,9 +627,9 @@ entrypoint()
           ['@property'] = { fg = 'iris' },
           -- ty marks imported modules as namespaces; color them in a warm amber gold instead of plain text.
           ['@lsp.type.namespace.python'] = { fg = '#dfa548' },
-          -- Sticky scroll lines keep the editor's own background, with no line underneath.
+          -- Sticky scroll lines keep the editor's own background, with no line underneath; their line numbers are a step dimmer than the rest.
           TreesitterContext = { bg = 'NONE' },
-          TreesitterContextLineNumber = { fg = 'muted', bg = 'NONE' },
+          TreesitterContextLineNumber = { fg = 'highlight_high', bg = 'NONE' },
           TreesitterContextBottom = { underline = false },
           TreesitterContextLineNumberBottom = { underline = false },
         },

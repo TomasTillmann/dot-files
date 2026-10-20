@@ -151,7 +151,7 @@ fi
 
 Restart Neovim to load the new mappings and shell settings.
 
-[nvim-treesitter-context](https://github.com/nvim-treesitter/nvim-treesitter-context) adds VS Code-style sticky scroll: once the first line of the class/function you are in scrolls off the top, it stays pinned there, stacked by nesting (e.g. `class Service:` above `def handle(...)`), up to five scopes (the outermost are dropped first), one line each, on the editor's own background with no separator line. Click a pinned line to jump to it. `grc` lists the callers of the function under the cursor in Telescope, by name (`handle`, `other`), with the call site in the preview; `grr` lists every reference line instead.
+[nvim-treesitter-context](https://github.com/nvim-treesitter/nvim-treesitter-context) adds VS Code-style sticky scroll: once the first line of the class/function you are in scrolls off the top, it stays pinned there, stacked by nesting (e.g. `class Service:` above `def handle(...)`), up to five scopes (the outermost are dropped first), one line each, on the editor's own background with no separator line; their line numbers are a step dimmer than the others. Click a pinned line to jump to it. `grc` lists the callers of the function under the cursor in Telescope, by name (`handle`, `other`), with the call site in the preview; `grr` lists every reference line instead.
 
 [Neoscroll](https://github.com/karb94/neoscroll.nvim) animates keyboard scrolling: Ctrl `d/u` keep their 10-line distance; Ctrl `b/f`, Ctrl `y/e`, and `zt`/`zz`/`zb` also animate. Mouse-wheel behavior remains native, including synchronized Git diff panes.
 
