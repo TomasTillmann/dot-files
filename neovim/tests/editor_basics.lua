@@ -29,7 +29,7 @@ runner = coroutine.create(function()
   for _, item in ipairs({ 'Find file', 'Find type', 'File tree', 'Grep search', 'Keymaps' }) do
     assert(screen:find(item, 1, true), 'Start screen is missing ' .. item)
   end
-  assert(vim.g.colors_name and vim.g.colors_name:find('^catppuccin'), 'Catppuccin is not the active theme')
+  assert(vim.g.colors_name and vim.g.colors_name:find('^rose%-pine'), 'Rose Pine is not the active theme')
   assert(vim.o.statusline:find('MiniStatusline', 1, true), 'mini.statusline is not active')
   local starter_buf = vim.api.nvim_get_current_buf()
   for _, shortcut in ipairs({ { 'f', 'Files' }, { 'g', 'Live Grep' }, { 'k', 'Key Maps' }, { '<CR>', 'Files' } }) do
@@ -41,7 +41,7 @@ runner = coroutine.create(function()
     wait(function() return vim.api.nvim_get_current_buf() == starter_buf end, 'Picker did not return to the start screen')
   end
   assert(vim.fn.maparg('t', 'n', false, true).desc == 'Find type', 'Start-screen t is not the type-search shortcut')
-  print('PASS start screen: items, f/g/k/Enter shortcuts, t mapped, Catppuccin, statusline')
+  print('PASS start screen: items, f/g/k/Enter shortcuts, t mapped, Rose Pine, statusline')
 
   local base = vim.fn.tempname() .. '-nvim-basics'
   vim.fn.mkdir(base, 'p')

@@ -1,6 +1,6 @@
 # Kitty on macOS
 
-This config reproduces the terminal appearance and keyboard behavior on another Mac: JetBrainsMono Nerd Font Mono at 14 pt with ligatures, Rosé Pine colors, 90% background opacity, dimmed inactive panes, and stack/split layouts. Baseline: Kitty **0.47.4** and Nerd Fonts **3.4.0**. Use Kitty 0.47.4 or newer for these session commands. Homebrew installs its current package versions.
+This config reproduces the terminal appearance and keyboard behavior on another Mac: FiraCode Nerd Font Mono at 14 pt with ligatures and a dotted zero (`brew install --cask font-fira-code-nerd-font`), Rosé Pine Moon colors on an opaque near-black background, dimmed inactive panes, and stack/split layouts. Baseline: Kitty **0.47.4** and Nerd Fonts **3.4.0**. Use Kitty 0.47.4 or newer for these session commands. Homebrew installs its current package versions.
 
 ## Install
 

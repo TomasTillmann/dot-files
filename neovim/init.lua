@@ -106,8 +106,9 @@ vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 -- Preview substitutions live, as you type!
 vim.o.inccommand = 'split'
 
--- Show which line your cursor is on
-vim.o.cursorline = true
+-- No current-line highlight; block cursor in every mode (ThePrimeagen's setup).
+vim.o.cursorline = false
+vim.o.guicursor = ''
 
 -- Minimal number of screen lines to keep above and below the cursor.
 vim.o.scrolloff = 10
@@ -571,7 +572,48 @@ entrypoint()
           mini = { enabled = true },
         },
       })
-      vim.cmd.colorscheme('catppuccin')
+    end,
+  },
+
+  { -- Rose Pine colorscheme (startup default)
+    'rose-pine/neovim',
+    name = 'rose-pine',
+    priority = 1000,
+    config = function()
+      require('rose-pine').setup({
+        variant = 'main', -- main, moon (dawn is picked via :colorscheme rose-pine-dawn)
+        disable_background = true, -- ThePrimeagen style: transparent, terminal background shows through
+        disable_float_background = true,
+        styles = { bold = false, italic = false },
+        -- Softer, warmer tones measured from ThePrimeagen's videos, with saturation raised slightly;
+        -- rose-pine-moon/dawn keep stock colors.
+        palette = {
+          main = {
+            base = '#0b0800',
+            surface = '#16130e',
+            overlay = '#221e19',
+            muted = '#6a6674',
+            subtle = '#8b8992',
+            text = '#d2ccdb',
+            love = '#c46b78',
+            gold = '#d8ae9b',
+            rose = '#d9afac',
+            pine = '#6a9680',
+            foam = '#b8d1c3',
+            iris = '#c8a8bc',
+          },
+        },
+        -- In his videos calls are rose like definitions, and attributes are iris.
+        highlight_groups = {
+          ['@function.call'] = { fg = 'rose' },
+          ['@function.method.call'] = { fg = 'rose' },
+          ['@variable.member'] = { fg = 'iris' },
+          ['@property'] = { fg = 'iris' },
+          -- ty marks imported modules as namespaces; color them in a warm amber gold instead of plain text.
+          ['@lsp.type.namespace.python'] = { fg = '#dfa548' },
+        },
+      })
+      vim.cmd.colorscheme('rose-pine')
     end,
   },
 
