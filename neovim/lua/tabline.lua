@@ -20,7 +20,7 @@ function M.select(index)
   if index > #vim.api.nvim_list_tabpages() then return end
   vim.cmd('tabnext ' .. index)
   local filetype = vim.bo.filetype
-  if filetype == 'neo-tree' or filetype == 'DiffviewFiles' or filetype == 'DiffviewFileHistory' then vim.cmd('wincmd l') end
+  if filetype == 'DiffviewFiles' or filetype == 'DiffviewFileHistory' then vim.cmd('wincmd l') end
 end
 
 function M.open_workspace(directory)
@@ -31,7 +31,6 @@ function M.open_workspace(directory)
   if git('rev-parse', '--show-toplevel').code ~= 0 then return end
   local panel = vim.api.nvim_get_current_tabpage()
   vim.t[panel].workspace_title = 'Panel'
-  require('neo-tree.command').execute({ action = 'show', source = 'filesystem', position = 'left', dir = directory })
   require('diffview').open({ '-C' .. directory })
   for _, base in ipairs({ 'origin/main', 'main' }) do
     if git('merge-base', base, 'HEAD').code == 0 then

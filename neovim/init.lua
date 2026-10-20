@@ -55,7 +55,8 @@ vim.api.nvim_create_autocmd('VimEnter', {
   once = true,
   callback = function()
     if not package.loaded.lazy or #vim.api.nvim_list_uis() == 0 or #vim.api.nvim_list_tabpages() > 1 or vim.fn.argc() > 1 then return end
-    local directory = vim.fn.argc() == 0 and vim.fn.getcwd() or vim.fn.argv(0)
+    -- oil renames a directory argument to oil:///path/ before VimEnter.
+    local directory = vim.fn.argc() == 0 and vim.fn.getcwd() or (vim.fn.argv(0):gsub('^oil://', ''))
     if vim.fn.isdirectory(directory) == 1 then require('tabline').open_workspace(directory) end
   end,
 })
@@ -238,7 +239,7 @@ require('lazy').setup({
       require('telescope').setup({
         defaults = {
           layout_config = { width = 0.98, horizontal = { preview_width = 0.5 } },
-          -- Git tabs send files to the Panel tab; Neo-tree would otherwise lose the selected line.
+          -- Git tabs send files to the Panel tab instead of replacing a diff pane.
           get_selection_window = function() return require('search').selection_window() end,
         },
         extensions = {
@@ -568,7 +569,6 @@ entrypoint()
           telescope = true,
           treesitter = true,
           which_key = true,
-          neotree = true,
           mini = { enabled = true },
         },
       })
@@ -617,28 +617,18 @@ entrypoint()
     end,
   },
 
-  { -- File tree.
-    'nvim-neo-tree/neo-tree.nvim',
-    branch = 'v3.x',
-    lazy = false,
-    dependencies = { 'nvim-lua/plenary.nvim', 'MunifTanjim/nui.nvim', 'nvim-tree/nvim-web-devicons' },
+  { -- File browser: a directory opens as an editable buffer; rename, create or delete by editing lines, then :w.
+    'stevearc/oil.nvim',
+    lazy = false, -- Replaces netrw, so `nvim .` opens the directory in oil.
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
     keys = {
-      { '<leader>b', function() require('side_panel').toggle() end, desc = 'Toggle side panel' },
-      { '-', '<cmd>Neotree reveal filesystem left<cr>', desc = 'Reveal current file in tree' },
+      { '<leader>b', function() require('side_panel').toggle() end, desc = 'Toggle Git side panel' },
+      { '-', '<cmd>Oil<cr>', desc = 'Open parent directory' },
     },
     opts = {
-      close_if_last_window = true,
-      enable_git_status = false,
-      sources = { 'filesystem', 'buffers' },
-      default_component_configs = { diagnostics = { errors_only = true } },
-      window = { position = 'left', width = 34, mappings = { ['<space>'] = 'none', ['Z'] = function(state) require('side_panel').expand_all(state) end } }, -- Space stays the leader inside the tree; Z opens every folder under the cursor except .venv and caches.
-      filesystem = {
-        window = { mappings = { ['[g'] = 'none', [']g'] = 'none', ['og'] = 'none' } },
-        check_gitignore_in_search = false,
-        follow_current_file = { enabled = true },
-        use_libuv_file_watcher = true,
-        filtered_items = { hide_dotfiles = false, hide_gitignored = false, never_show = { '.git' } },
-      },
+      view_options = { show_hidden = true, is_always_hidden = function(name) return name == '.git' end },
+      -- Ctrl h/l keep moving between splits instead of oil's split-open and refresh.
+      keymaps = { ['<C-h>'] = false, ['<C-l>'] = false },
     },
   },
 
@@ -801,7 +791,7 @@ entrypoint()
           map('t', function() require('search').types() end, 'Find type')
           map('g', function() require('search').grep() end, 'Grep search')
           map('k', '<cmd>Telescope keymaps<cr>', 'Keymaps')
-          map('-', '<cmd>Neotree filesystem left<cr>', 'Open file tree')
+          map('-', '<cmd>Oil<cr>', 'Browse files')
         end,
       })
 
@@ -815,7 +805,7 @@ entrypoint()
         items = {
           { name = 'Find file      f', action = function() require('search').files() end, section = 'Search' },
           { name = 'Find type      t', action = function() require('search').types() end, section = 'Search' },
-          { name = 'File tree      -', action = 'Neotree filesystem left', section = 'Files' },
+          { name = 'Browse files   -', action = 'Oil', section = 'Files' },
           { name = 'Grep search    g', action = function() require('search').grep() end, section = 'Search' },
           { name = 'Keymaps        k', action = 'Telescope keymaps', section = 'Help' },
           starter.sections.builtin_actions(),

@@ -53,7 +53,7 @@ runner = coroutine.create(function()
     local placeholders = 0
     for _, buf in ipairs(vim.api.nvim_list_bufs()) do
       local name = vim.api.nvim_buf_get_name(buf)
-      if (name:find('neo%-tree') and vim.bo[buf].filetype ~= 'neo-tree') or (name:find('^diffview://null') and vim.bo[buf].buflisted) then
+      if name:find('^diffview://null') and vim.bo[buf].buflisted then
         placeholders = placeholders + 1
       end
     end
@@ -83,7 +83,7 @@ runner = coroutine.create(function()
     assert(s.errmsg == '' and not s.blocking, 'Startup error: ' .. s.errmsg)
     assert(#s.tabs == 3, 'Expected Panel and two Git tabs, got ' .. vim.inspect(s.tabs))
     local panel, changes = s.tabs[1], s.tabs[2]
-    assert(panel.title == 'Panel' and panel.filetypes['neo-tree'], 'Panel lacks the tree: ' .. vim.inspect(panel))
+    assert(panel.title == 'Panel', 'Panel tab missing: ' .. vim.inspect(panel))
     assert(not panel.files['a.txt'] == not file_open, (file_open and 'Panel lacks the open file: ' or 'Panel restored a file from before :restart: ') .. vim.inspect(panel))
     assert(changes.title == 'Current Changes' and changes.filetypes['DiffviewFiles'], 'Current Changes tab missing: ' .. vim.inspect(changes))
     assert(s.tabs[3].title == 'Changes against main', 'Branch comparison tab missing: ' .. vim.inspect(s.tabs[3]))
@@ -94,7 +94,7 @@ runner = coroutine.create(function()
     local s = connect() and state()
     return s and #s.tabs == 3
   end, 'Neovim with a terminal UI did not open its workspace tabs')
-  vim.rpcnotify(channel, 'nvim_input', '<C-w>l:edit a.txt<CR>')
+  vim.rpcnotify(channel, 'nvim_input', ':edit a.txt<CR>')
   wait(function()
     local s = state()
     return s and s.tabs[1].files['a.txt']
@@ -109,7 +109,7 @@ runner = coroutine.create(function()
   end, 'timeout')
   assert(restored, 'Workspace was not rebuilt after :restart; last answer: ' .. vim.inspect(last))
   check('restart!', false)
-  print('PASS :restart: starts fresh with Panel/tree and Git tabs, nothing restored, no errors')
+  print('PASS :restart: starts fresh with Panel and Git tabs, nothing restored, no errors')
 
   pcall(vim.rpcnotify, channel, 'nvim_command', 'qa!')
   pause(500)

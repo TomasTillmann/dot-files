@@ -26,7 +26,7 @@ runner = coroutine.create(function()
   -- Start screen, theme and status line.
   assert(vim.bo.filetype == 'ministarter', 'Start screen did not open: ' .. vim.bo.filetype)
   local screen = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\n')
-  for _, item in ipairs({ 'Find file', 'Find type', 'File tree', 'Grep search', 'Keymaps' }) do
+  for _, item in ipairs({ 'Find file', 'Find type', 'Browse files', 'Grep search', 'Keymaps' }) do
     assert(screen:find(item, 1, true), 'Start screen is missing ' .. item)
   end
   assert(vim.g.colors_name and vim.g.colors_name:find('^rose%-pine'), 'Rose Pine is not the active theme')
@@ -145,16 +145,20 @@ runner = coroutine.create(function()
   vim.cmd.only()
   print('PASS windows: splits open right/below, Ctrl-h/j/k/l move focus')
 
-  -- - reveals the current file in the tree.
+  -- - opens the file's folder in oil with the cursor on the file; - again goes up a folder.
   vim.cmd.cd(vim.fn.fnameescape(base))
   vim.cmd.edit(vim.fn.fnameescape(file))
   keys('-')
-  wait(function() return vim.bo.filetype == 'neo-tree' end, '- did not open the file tree')
+  wait(function() return vim.bo.filetype == 'oil' end, '- did not open oil')
+  local function same(a, b) return vim.fn.resolve(vim.fs.normalize(a)) == vim.fn.resolve(vim.fs.normalize(b)) end
   wait(function()
-    local node = require('neo-tree.sources.manager').get_state('filesystem').tree:get_node()
-    return node and node.path == file
-  end, '- did not select the current file in the tree')
-  print('PASS file tree: - reveals the current file')
+    local entry = require('oil').get_cursor_entry()
+    return entry and entry.name == vim.fs.basename(file)
+  end, '- did not put the cursor on the current file')
+  assert(same(require('oil').get_current_dir(), vim.fs.dirname(file)), '- opened the wrong folder: ' .. require('oil').get_current_dir())
+  keys('-')
+  wait(function() return same(require('oil').get_current_dir(), vim.fs.dirname(vim.fs.dirname(file))) end, '- in oil did not go up a folder')
+  print('PASS file browser: - opens oil on the current file, - again goes up')
 
   vim.cmd('qa!')
 end)

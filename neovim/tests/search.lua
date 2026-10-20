@@ -157,40 +157,30 @@ runner = coroutine.create(function()
     if name == 'Alpha' then
       vim.cmd.edit(vim.fn.fnameescape(root .. '/pyproject.toml'))
       local editor = vim.api.nvim_get_current_win()
-      vim.cmd('Neotree filesystem left')
-      wait_for(function() return vim.bo.filetype == 'neo-tree' end, 'Neo-tree did not take focus')
-      local tree = vim.api.nvim_get_current_win()
-      local tree_ready = vim.uv.hrtime() + 250000000
-      wait_for(
-        function() return vim.uv.hrtime() >= tree_ready and vim.api.nvim_buf_line_count(vim.api.nvim_win_get_buf(tree)) > 1 end,
-        'Neo-tree did not render'
-      )
       for _, case in ipairs({
         { key = 'st', query = 'Bootstrap' .. name, target = root .. '/' .. files[1], line = 2 },
         { key = 'sg', query = 'def Search' .. name .. 'Function', target = target, line = 5 },
       }) do
-        vim.api.nvim_set_current_win(tree)
+        vim.cmd('Oil')
+        wait_for(function() return vim.bo.filetype == 'oil' and vim.api.nvim_buf_line_count(0) > 1 end, 'oil did not render')
         local picker = invoke(case.key)
         query(case.query)
         wait_for(function()
           local rows = entries(picker)
           return #rows == 1 and state.get_selected_entry() == rows[1] and path(rows[1], root) == case.target and rows[1].lnum == case.line
-        end, case.key .. ' from Neo-tree did not find the expected location')
+        end, case.key .. ' from oil did not find the expected location')
         vim.api.nvim_input('<CR>')
-        wait_for(function() return vim.api.nvim_buf_get_name(0) == case.target end, case.key .. ' from Neo-tree did not open the target')
-        -- Neo-tree redirects foreign buffers asynchronously; check the final location after that redirect.
+        wait_for(function() return vim.api.nvim_buf_get_name(0) == case.target end, case.key .. ' from oil did not open the target')
         local settled = vim.uv.hrtime() + 250000000
         wait_for(function() return vim.uv.hrtime() >= settled end, 'Window events did not settle')
         assert(vim.api.nvim_get_current_win() == editor, case.key .. ' did not use the existing editing window')
         assert(
           vim.api.nvim_buf_get_name(0) == case.target and vim.api.nvim_win_get_cursor(0)[1] == case.line,
-          case.key .. ' from Neo-tree lost the selected line: ' .. vim.inspect(vim.api.nvim_win_get_cursor(0))
+          case.key .. ' from oil lost the selected line: ' .. vim.inspect(vim.api.nvim_win_get_cursor(0))
         )
-        assert(vim.api.nvim_win_is_valid(tree) and vim.bo[vim.api.nvim_win_get_buf(tree)].filetype == 'neo-tree', case.key .. ' replaced or closed Neo-tree')
         vim.cmd.edit(vim.fn.fnameescape(root .. '/pyproject.toml'))
       end
-      vim.cmd('Neotree close')
-      print('PASS Neo-tree: type and grep Enter preserve the editing window, exact line, and tree')
+      print('PASS oil: type and grep Enter open in the oil window at the exact line')
     end
     print('PASS ' .. name .. ': global keys, hidden LSP bootstrap, live type/file/buffer/repository results, type Enter jump')
   end

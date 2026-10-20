@@ -79,16 +79,13 @@ runner = coroutine.create(function()
       assert(vim.api.nvim_get_current_tabpage() == tab, message .. ': did not switch to the Panel tab')
       assert(vim.api.nvim_buf_get_name(0) == target, message .. ': opened ' .. vim.api.nvim_buf_get_name(0))
       assert(not line or vim.api.nvim_win_get_cursor(0)[1] == line, message .. ': wrong line ' .. vim.api.nvim_win_get_cursor(0)[1])
-      assert(vim.api.nvim_win_get_config(0).relative == '' and vim.bo.filetype ~= 'neo-tree', message .. ': not an editing window')
+      assert(vim.api.nvim_win_get_config(0).relative == '' and vim.bo.buftype == '', message .. ': not an editing window')
     end
 
     require('tabline').open_workspace(root)
     local tabs = vim.api.nvim_list_tabpages()
     assert(#tabs == 3 and vim.t[tabs[1]].workspace_title == 'Panel', 'Workspace tabs')
-    local editor
-    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tabs[1])) do
-      if vim.bo[vim.api.nvim_win_get_buf(win)].filetype ~= 'neo-tree' then editor = win end
-    end
+    local editor = vim.api.nvim_tabpage_list_wins(tabs[1])[1]
 
     -- Space sg from a diff pane in Current Changes.
     local view, wins = diff_tab(2)
@@ -99,9 +96,8 @@ runner = coroutine.create(function()
     assert_untouched(tabs[2], wins, 'Space sg')
     assert(#vim.api.nvim_list_tabpages() == 3, 'Space sg created a tab')
 
-    -- Space sf from the file panel in Current Changes, with Panel showing only the tree.
-    vim.api.nvim_win_close(editor, true)
-    vim.cmd('Neotree filesystem left')
+    -- Space sf from the file panel in Current Changes, with Panel showing oil: the file replaces the directory listing.
+    vim.api.nvim_win_call(editor, function() require('oil').open(root) end)
     view, wins = diff_tab(2)
     vim.cmd('DiffviewFocusFiles')
     assert(vim.bo.filetype == 'DiffviewFiles', 'Focus is not in the file panel')
@@ -146,7 +142,7 @@ runner = coroutine.create(function()
       if vim.t[tab].diffview_title then vim.api.nvim_set_current_tabpage(tab); settle(); vim.cmd('DiffviewClose') end
     end
     vim.fn.delete(root, 'rf')
-    print('PASS diff open in Panel: grep/files/recent from diff panes and file panel, Panel window reuse, tree-only Panel, current-buffer search, fallbacks')
+    print('PASS diff open in Panel: grep/files/recent from diff panes and file panel, Panel window reuse, oil in Panel, current-buffer search, fallbacks')
   end, debug.traceback)
   if not ok then vim.api.nvim_err_writeln(err) end
   vim.cmd(ok and 'qa!' or 'cquit 1')
