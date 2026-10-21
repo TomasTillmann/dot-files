@@ -10,6 +10,9 @@ function M.toggle()
   end
   local file = vim.bo.buftype == '' and vim.api.nvim_buf_get_name(0) or ''
   if vim.startswith(file, 'diffview://') then file = '' end
+  -- A staged diff shows the index on both sides, so the file comes from the diff's entry.
+  local view = file == '' and vim.t.diffview_title and require('diffview.lib').get_current_view()
+  if view and view.cur_entry then file = view.cur_entry.absolute_path end
   -- From a Git diff the diff closes first, so the tree opens in the one editing view, on the file of the diff.
   local win = require('search').selection_window()
   if win ~= 0 then vim.api.nvim_set_current_win(win) end

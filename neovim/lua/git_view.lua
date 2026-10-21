@@ -29,11 +29,17 @@ local function repository()
   return out and vim.trim(out)
 end
 
--- Changed files between `base` and `target` (a commit, or the working tree when nil), with line counts.
-local function changed_files(spec)
-  local revs = { spec.base, spec.target }
-  local status = git(spec.root, vim.list_extend({ 'diff', '-M', '-z', '--name-status' }, revs)) or ''
-  local counts = git(spec.root, vim.list_extend({ 'diff', '-M', '-z', '--numstat' }, revs)) or ''
+-- A change list's groups of files: Space gg splits staged from unstaged changes, the other lists are one group
+-- between `base` and `target` (a commit, or the working tree when nil).
+local function sections_of(spec)
+  return spec.sections or { { revs = { spec.base, spec.target }, diff = spec.diff, untracked = spec.untracked } }
+end
+
+-- Changed files of one section, with line counts.
+local function changed_files(root, section)
+  local revs = section.revs
+  local status = git(root, vim.list_extend({ 'diff', '-M', '-z', '--name-status' }, revs)) or ''
+  local counts = git(root, vim.list_extend({ 'diff', '-M', '-z', '--numstat' }, revs)) or ''
   local files, by_path = {}, {}
   local tokens = vim.split(status, '\0', { trimempty = true })
   local i = 1
@@ -55,8 +61,8 @@ local function changed_files(spec)
     local file = by_path[path or '']
     if file then file.added, file.removed = tonumber(added), tonumber(removed) end
   end
-  if spec.untracked then
-    for _, path in ipairs(vim.split(git(spec.root, { 'ls-files', '--others', '--exclude-standard', '-z' }) or '', '\0', { trimempty = true })) do
+  if section.untracked then
+    for _, path in ipairs(vim.split(git(root, { 'ls-files', '--others', '--exclude-standard', '-z' }) or '', '\0', { trimempty = true })) do
       if not by_path[path] then files[#files + 1] = { status = '?', path = path, untracked = true } end
     end
   end
@@ -65,8 +71,8 @@ end
 
 local status_hl = { A = 'Added', ['?'] = 'Added', M = 'Changed', R = 'Changed', C = 'Changed', T = 'Changed', D = 'Removed', U = 'DiagnosticError' }
 
--- Renders `files` as a tree with single-child folders joined (src/app/models/), folders first.
-local function render_files(spec, files, lines, marks, items)
+-- Renders `files` of `section` as a tree with single-child folders joined (src/app/models/), folders first.
+local function render_files(section, files, lines, marks, items)
   local tree = { dirs = {}, files = {} }
   for _, file in ipairs(files) do
     local node, parts = tree, vim.split(file.path, '/')
@@ -93,7 +99,7 @@ local function render_files(spec, files, lines, marks, items)
       lines[#lines + 1] = prefix .. label .. '/'
       mark(#indent + 2, #prefix, 'Directory')
       mark(#prefix, #lines[#lines], 'Directory')
-      items[#lines] = { kind = 'dir', path = dir.path }
+      items[#lines] = { kind = 'dir', path = dir.path, section = section }
       walk(dir, indent .. '  ')
     end
     table.sort(node.files, function(a, b) return a.path < b.path end)
@@ -118,12 +124,15 @@ local function render_files(spec, files, lines, marks, items)
         line = line .. added .. removed
       end
       lines[#lines] = line
-      items[#lines] = { kind = 'file', file = file }
+      items[#lines] = { kind = 'file', file = file, section = section }
     end
   end
   walk(tree, '')
-  if #files == 0 then lines[#lines + 1] = '  No changes' ; mark(0, #lines[#lines], 'Comment') end
 end
+
+-- What the cursor is on, kept across refreshes: the same file in the same section, else the same file.
+local function item_path(item) return item.file and item.file.path or item.path or item.sha or ('\0' .. item.kind) end
+local function item_focus(item) return { section = item.section and item.section.name, path = item_path(item) } end
 
 -- Git's graph colors (per branch, kept along its line) mapped to highlight groups; the commit dots stay uncolored.
 local graph_colors = { DiagnosticError = { 31 }, DiagnosticOk = { 32 }, DiagnosticWarn = { 33 }, DiagnosticInfo = { 34 }, Function = { 35 }, DiagnosticHint = { 36 } }
@@ -202,11 +211,27 @@ local function render(buf, focus)
     summary = (count == 2000 and 'latest ' or '') .. count .. (count == 1 and ' commit' or ' commits')
     if not spec.path then summary = summary .. '  ·  a: ' .. (spec.all and 'current branch only' or 'all branches') end
   else
-    local files = changed_files(spec)
-    local added, removed = 0, 0
-    for _, file in ipairs(files) do added, removed = added + (file.added or 0), removed + (file.removed or 0) end
-    render_files(spec, files, lines, marks, items)
-    summary = #files .. (#files == 1 and ' file' or ' files') .. '  +' .. added .. ' -' .. removed
+    local function count(files, added, removed)
+      for _, file in ipairs(files) do added, removed = added + (file.added or 0), removed + (file.removed or 0) end
+      return added, removed
+    end
+    local paths, added, removed = {}, 0, 0
+    for _, section in ipairs(sections_of(spec)) do
+      local files = changed_files(spec.root, section)
+      for _, file in ipairs(files) do paths[file.path] = true end
+      added, removed = count(files, added, removed)
+      if section.title and #files > 0 then
+        local section_added, section_removed = count(files, 0, 0)
+        lines[#lines + 1] = ' ' .. section.title .. '  ·  ' .. #files .. (#files == 1 and ' file' or ' files') .. '  +' .. section_added .. ' -' .. section_removed
+        marks[#marks + 1] = { #lines, 1, #section.title + 1, 'Statement' }
+        marks[#marks + 1] = { #lines, #section.title + 1, #lines[#lines], 'Comment' }
+        items[#lines] = { kind = 'section', section = section }
+      end
+      render_files(section, files, lines, marks, items)
+    end
+    local total = vim.tbl_count(paths)
+    if total == 0 then lines[#lines + 1] = '  No changes'; marks[#marks + 1] = { #lines, 0, #lines[#lines], 'Comment' } end
+    summary = total .. (total == 1 and ' file' or ' files') .. '  +' .. added .. ' -' .. removed
   end
   lines[1] = ' ' .. spec.title .. '  ·  ' .. summary
   marks[#marks + 1] = { 1, 1, #spec.title + 1, 'Title' }
@@ -214,7 +239,7 @@ local function render(buf, focus)
 
   local win = vim.fn.bufwinid(buf)
   local previous = win ~= -1 and list.items[vim.api.nvim_win_get_cursor(win)[1]]
-  focus = focus or (previous and (previous.file and previous.file.path or previous.path or previous.sha))
+  focus = focus or (previous and item_focus(previous))
   list.items = items
   vim.bo[buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -225,14 +250,17 @@ local function render(buf, focus)
     pcall(vim.api.nvim_buf_set_extmark, buf, ns, m[1] - 1, m[2], { end_col = m[3], hl_group = m[4] })
   end
   if win ~= -1 then
-    local row, row_default
+    local row, row_same_path, row_default
     for line = 2, #lines do
       local item = items[line]
-      if item and focus and (item.file and item.file.path or item.path or item.sha) == focus then row = line; break end
+      if item and focus and item_path(item) == focus.path then
+        if (item.section and item.section.name) == focus.section then row = line; break end
+        row_same_path = row_same_path or line -- Staged or unstaged since: the file in its other section.
+      end
       if item and item.head then row_default = line end -- The history starts on the checked-out commit.
       if item and not row_default and (item.kind == 'file' or item.kind == 'commit') then row_default = line end
     end
-    row = row or row_default or math.min(#lines, 2)
+    row = row or row_same_path or row_default or math.min(#lines, 2)
     vim.api.nvim_win_set_cursor(win, { row, 0 })
   end
 end
@@ -245,8 +273,9 @@ local function preview_command(spec, item)
     if spec.path then vim.list_extend(args, { '--', spec.path }) end
     return args, 'git', item.short
   end
-  local revs = { spec.base, spec.target }
-  if item.kind == 'header' then return vim.list_extend({ 'diff', '-M', '--stat' }, revs), 'git', spec.title end
+  if item.kind == 'header' then return vim.list_extend({ 'diff', '-M', '--stat' }, { spec.base, spec.target }), 'git', spec.title end
+  local revs = item.section.revs
+  if item.kind == 'section' then return vim.list_extend({ 'diff', '-M', '--stat' }, revs), 'git', item.section.title end
   if item.kind == 'dir' then return vim.list_extend(vim.list_extend({ 'diff', '-M' }, revs), { '--', item.path }), 'diff', item.path .. '/' end
   local file = item.file
   if file.untracked then return { 'diff', '--no-index', '--', '/dev/null', file.path }, 'diff', file.path, true end
@@ -257,7 +286,7 @@ local function preview_command(spec, item)
 end
 
 local function item_key(buf, item)
-  return lists[buf].spec.name .. ':' .. (item.sha or item.path or (item.file and item.file.path) or item.kind)
+  return lists[buf].spec.name .. ':' .. (item.section and item.section.name or '') .. ':' .. item_path(item)
 end
 
 local function update(win, force)
@@ -309,10 +338,11 @@ local function open_diff(root, revs, path)
   require('diffview').open(args)
 end
 
-local function first_file(list, path)
-  for line = 1, vim.tbl_count(list.items) + 1 do
+-- The first file in `section` (any section when nil) under the folder `path` (anywhere when nil).
+local function first_file(list, section, path)
+  for line = 1, vim.api.nvim_buf_line_count(0) do
     local item = list.items[line]
-    if item and item.kind == 'file' and (not path or vim.startswith(item.file.path, path .. '/')) then return item.file end
+    if item and item.kind == 'file' and (not section or item.section == section) and (not path or vim.startswith(item.file.path, path .. '/')) then return item end
   end
 end
 
@@ -337,8 +367,8 @@ function M.select()
       base = parent, target = item.sha, diff = { parent .. '..' .. item.sha },
     })
   end
-  local file = item.kind == 'file' and item.file or first_file(list, item.kind == 'dir' and item.path or nil)
-  if file then open_diff(spec.root, spec.diff, file.path) end
+  local file = item.kind == 'file' and item or first_file(list, item.section, item.kind == 'dir' and item.path or nil)
+  if file then open_diff(spec.root, file.section.diff, file.file.path) end
 end
 
 -- q: back to what the window showed before the Git lists, or to the folder tree.
@@ -456,7 +486,14 @@ end
 function M.changes()
   local root = repository()
   if not root then return end
-  show({ kind = 'files', top = true, name = 'changes', root = root, title = 'Current changes', base = 'HEAD', untracked = true, diff = {} })
+  show({
+    kind = 'files', top = true, name = 'changes', root = root, title = 'Current changes', base = 'HEAD',
+    -- Diffview with --cached shows only the staged side; without it the unstaged entry of a file comes first.
+    sections = {
+      { name = 'staged', title = 'Staged', revs = { '--cached' }, diff = { '--cached' } },
+      { name = 'unstaged', title = 'Unstaged', revs = {}, diff = {}, untracked = true },
+    },
+  })
 end
 
 -- Changes on this branch since it left `base` (main by default), including uncommitted ones.
@@ -511,14 +548,16 @@ end
 function M.close_diff()
   local view = require('diffview.lib').get_current_view()
   if not view then return end
-  local path = view.cur_entry and view.cur_entry.path
+  local entry = view.cur_entry
   local origin = diff_origin
   view:close()
   require('diffview.lib').dispose_view(view)
   if origin and vim.api.nvim_tabpage_is_valid(origin) then vim.api.nvim_set_current_tabpage(origin) end
   local buf = vim.api.nvim_get_current_buf()
   if lists[buf] then
-    render(buf, path)
+    -- A staged file is a working entry of a --cached diff (right side the index), or a staged entry of the full one.
+    local staged = entry and (entry.kind == 'staged' or view.right.type == require('diffview.vcs.rev').RevType.STAGE)
+    render(buf, entry and { section = lists[buf].spec.sections and (staged and 'staged' or 'unstaged'), path = entry.path })
     update(vim.api.nvim_get_current_win(), true)
   end
 end

@@ -59,7 +59,10 @@ runner = coroutine.create(function()
     vim.fn.writefile({ 'local function model()', '  return 2', 'end' }, root .. '/src/app/model.lua')
     local feature = commit('Feature work')
     local head = feature
-    -- Uncommitted: a modified file and an untracked one.
+    -- Uncommitted: a staged new file, a file with staged and further unstaged edits, and an untracked file.
+    vim.fn.writefile({ 'staged' }, root .. '/staged.txt')
+    vim.fn.writefile({ 'base staged' }, root .. '/base.txt')
+    git('add', 'staged.txt', 'base.txt')
     vim.fn.writefile({ 'base changed' }, root .. '/base.txt')
     vim.fn.writefile({ 'brand new' }, root .. '/new.txt')
     vim.cmd.cd(vim.fn.fnameescape(root))
@@ -106,13 +109,39 @@ runner = coroutine.create(function()
       settle(150)
     end
 
-    -- Space gg: the current changes fill the view; the change under the cursor previews read-only on the right.
+    -- Space gg: the current changes fill the view, staged and unstaged apart; the change under the cursor previews read-only on the right.
     keys(' gg')
     in_list('Current changes')
-    assert(row_of('M .*base%.txt') and row_of('%? .*new%.txt') and not row_of('model%.lua'), 'Current changes: ' .. table.concat(lines(), '|'))
+    local function rows_of(pattern)
+      local rows = {}
+      for row, line in ipairs(lines()) do if line:find(pattern) then rows[#rows + 1] = row end end
+      return rows
+    end
+    local staged, unstaged = row_of('^ Staged  ·  2 files'), row_of('^ Unstaged  ·  2 files')
+    local base_rows = rows_of('M .*base%.txt')
+    assert(staged and unstaged and staged < unstaged and #base_rows == 2, 'Current changes: ' .. table.concat(lines(), '|'))
+    assert(row_of('A .*staged%.txt') < unstaged and row_of('%? .*new%.txt') > unstaged and not row_of('model%.lua'), 'Current changes: ' .. table.concat(lines(), '|'))
+    assert(lines()[1]:find('3 files', 1, true), 'Header should count each file once: ' .. lines()[1])
     local item = lines()[vim.fn.line('.')]
-    assert(item:find('base%.txt'), 'Cursor should start on the first file: ' .. item)
+    assert(item:find('base%.txt') and vim.fn.line('.') == base_rows[1], 'Cursor should start on the first file: ' .. item)
+    preview_has('+base staged')
+    vim.api.nvim_win_set_cursor(0, { staged, 0 })
+    preview_has('staged.txt')
+    -- The staged side of a file opens only its staged diff; its unstaged side opens the working-tree diff.
+    vim.api.nvim_win_set_cursor(0, { base_rows[1], 0 })
+    keys('<CR>')
+    assert(diff_ready('base.txt').right.type == require('diffview.vcs.rev').RevType.STAGE, 'Staged row did not open the staged diff')
+    keys('q')
+    in_list('Current changes')
+    assert(vim.fn.line('.') == base_rows[1], 'q did not return to the staged row')
+    vim.api.nvim_win_set_cursor(0, { base_rows[2], 0 })
     preview_has('+base changed')
+    keys('<CR>')
+    local v = diff_ready('base.txt')
+    assert(v.right.type == require('diffview.vcs.rev').RevType.LOCAL and v.cur_entry.kind == 'working', 'Unstaged row did not open the working-tree diff')
+    keys('q')
+    in_list('Current changes')
+    assert(vim.fn.line('.') == base_rows[2], 'q did not return to the unstaged row')
     local preview_buf, preview_win = preview()
     assert(not vim.bo[preview_buf].modifiable, 'Preview is modifiable')
     assert(math.abs(vim.api.nvim_win_get_width(preview_win) - 120) <= 2, 'Preview is not 60% wide: ' .. vim.api.nvim_win_get_width(preview_win))
@@ -169,7 +198,7 @@ runner = coroutine.create(function()
     goto_row('model%.lua')
     preview_has('+  return 2')
     keys('<CR>')
-    local v = diff_ready('src/app/model.lua')
+    v = diff_ready('src/app/model.lua')
     assert(v.rev_arg == 'origin/main...HEAD', 'Unexpected comparison ' .. tostring(v.rev_arg))
     keys('q')
     in_list('Changes against main')
