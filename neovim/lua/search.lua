@@ -29,9 +29,15 @@ end
 
 function M.files() builtin.find_files({ cwd = root() }) end
 function M.grep() builtin.live_grep({ cwd = root() }) end
--- Jumps within the current buffer, including diff panes; the prompt starts with the word under the cursor.
+-- Jumps within the current buffer, including diff panes. From Visual mode the prompt starts with the selected text.
 function M.buffer()
-  builtin.current_buffer_fuzzy_find({ default_text = vim.fn.expand('<cword>'), get_selection_window = function() return 0 end })
+  local text
+  local mode = vim.fn.mode()
+  if mode == 'v' or mode == 'V' or mode == '\22' then
+    text = table.concat(vim.fn.getregion(vim.fn.getpos('v'), vim.fn.getpos('.'), { type = mode }), ' ')
+    vim.api.nvim_feedkeys(vim.keycode('<Esc>'), 'nx', false)
+  end
+  builtin.current_buffer_fuzzy_find({ default_text = text, get_selection_window = function() return 0 end })
 end
 
 local starting = false

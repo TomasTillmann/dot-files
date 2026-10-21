@@ -136,10 +136,20 @@ runner = coroutine.create(function()
     end, 'File results did not update while typing')
     close(file_picker, scratch)
 
-    -- The prompt starts with the word under the cursor, so the search runs without typing.
+    -- Without a selection the prompt starts empty, even on a word.
     vim.api.nvim_win_set_cursor(0, { 2, 3 })
     local buffer_picker = invoke('ss')
-    wait_for(function() return state.get_current_line() == 'search_repo_token' end, 'Current-buffer search did not prefill the word under the cursor')
+    assert(state.get_current_line() == '', 'Current-buffer search prefilled without a selection: ' .. state.get_current_line())
+    close(buffer_picker, scratch)
+
+    -- From Visual mode the prompt starts with the selected text, so the search runs without typing.
+    vim.api.nvim_input('<Esc>')
+    wait_for(function() return vim.api.nvim_get_mode().mode == 'n' end, 'Search requires Normal mode')
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+    vim.api.nvim_input('ve' .. leader .. 'ss')
+    wait_for(function() return current_picker() and vim.api.nvim_get_mode().mode == 'i' end, 'Visual ss did not open a picker', 30000)
+    buffer_picker = current_picker()
+    wait_for(function() return state.get_current_line() == 'search_repo_token' end, 'Current-buffer search did not prefill the selection')
     wait_for(function()
       local rows = entries(buffer_picker)
       return #rows == 1 and rows[1].lnum == 2 and rows[1].text:find('current-buffer-only', 1, true)

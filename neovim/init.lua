@@ -260,7 +260,7 @@ require('lazy').setup({
       end, { desc = 'Recent open files' })
       vim.keymap.set('n', '<leader>sf', search.files, { desc = 'Search files' })
       vim.keymap.set('n', '<leader>st', search.types, { desc = 'Search repository types' })
-      vim.keymap.set('n', '<leader>ss', search.buffer, { desc = 'Search current buffer' })
+      vim.keymap.set({ 'n', 'x' }, '<leader>ss', search.buffer, { desc = 'Search current buffer (selection prefilled)' })
       vim.keymap.set('n', '<leader>sg', search.grep, { desc = 'Search repository text' })
       vim.keymap.set('n', '<leader>ut', function() builtin.colorscheme({ enable_preview = true }) end, { desc = 'Choose theme (live preview)' })
 
