@@ -17,7 +17,7 @@ vim.schedule(function()
     for i = 1, 30 do lines[i] = 'line ' .. i end
     assert(vim.fn.writefile(lines, repo .. '/file.txt') == 0)
     git(repo, 'add', 'file.txt')
-    git(repo, 'commit', '-q', '-m', 'init')
+    git(repo, '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', 'init')
     lines[5], lines[20] = 'changed 5', 'changed 20'
     assert(vim.fn.writefile(lines, repo .. '/file.txt') == 0)
 

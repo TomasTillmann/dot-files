@@ -29,7 +29,7 @@ runner = coroutine.create(function()
   git('config', 'user.name', 'Test')
   vim.fn.writefile({ 'one' }, repo .. '/a.txt')
   git('add', 'a.txt')
-  git('commit', '-q', '-m', 'init')
+  git('-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', 'init')
   vim.fn.writefile({ 'one', 'two' }, repo .. '/a.txt')
 
   local socket = vim.fn.tempname() .. '.s' -- Short: macOS limits socket paths to ~104 bytes.
