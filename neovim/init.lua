@@ -5,6 +5,11 @@
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
+-- Neo-tree replaces netrw; netrw itself would still list `nvim .` first and leave errors behind.
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+vim.api.nvim_create_augroup('FileExplorer', {}) -- Neo-tree clears netrw's group; without it that leaves E216 behind.
+
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = true
 
