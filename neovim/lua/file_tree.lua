@@ -8,10 +8,11 @@ function M.toggle()
     require('neo-tree.command').execute({ action = 'close' })
     return
   end
-  -- From a Git tab the tree opens in the Panel tab's editing window instead of replacing a diff pane.
+  local file = vim.bo.buftype == '' and vim.api.nvim_buf_get_name(0) or ''
+  if vim.startswith(file, 'diffview://') then file = '' end
+  -- From a Git diff the diff closes first, so the tree opens in the one editing view, on the file of the diff.
   local win = require('search').selection_window()
   if win ~= 0 then vim.api.nvim_set_current_win(win) end
-  local file = vim.bo.buftype == '' and vim.api.nvim_buf_get_name(0) or ''
   local cwd = vim.fn.getcwd()
   local dir = cwd
   if file ~= '' and not vim.startswith(file, cwd .. '/') then dir = vim.fs.root(file, '.git') or vim.fs.dirname(file) end

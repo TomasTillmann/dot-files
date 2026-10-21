@@ -88,7 +88,6 @@ function M.reopen(view, rev_arg)
   require('diffview').close()
   vim.api.nvim_set_current_tabpage(reopened)
   vim.cmd('tabmove ' .. (index - 1))
-  require('tabline').select(index)
 end
 
 function M.stop(view)

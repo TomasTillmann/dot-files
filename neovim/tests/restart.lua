@@ -1,6 +1,6 @@
 -- Run: env -u VIRTUAL_ENV nvim --headless '+luafile tests/restart.lua'
 -- Real :restart: a Neovim with a terminal UI (in a pseudo-terminal) in a disposable Git repository,
--- driven over its socket. Verifies :restart starts fresh: workspace rebuilt, nothing from before restored, no errors.
+-- driven over its socket. Verifies :restart starts fresh: one view with the folder tree, nothing from before restored, no errors.
 local runner, child, channel
 local function resume()
   local ok, err = coroutine.resume(runner)
@@ -33,7 +33,7 @@ runner = coroutine.create(function()
   vim.fn.writefile({ 'one', 'two' }, repo .. '/a.txt')
 
   local socket = vim.fn.tempname() .. '.s' -- Short: macOS limits socket paths to ~104 bytes.
-  child = vim.fn.jobstart({ 'nvim', '--listen', socket }, {
+  child = vim.fn.jobstart({ 'nvim', '--listen', socket, '.' }, {
     pty = true, width = 160, height = 45, cwd = repo, env = { TERM = 'xterm-256color', VIRTUAL_ENV = '' },
   })
   assert(child > 0, 'Could not start Neovim in a pseudo-terminal')
@@ -48,7 +48,7 @@ runner = coroutine.create(function()
         filetypes[vim.bo[buf].filetype] = true
         files[vim.fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ':t')] = true
       end
-      tabs[#tabs + 1] = { title = vim.t[tab].workspace_title or vim.t[tab].diffview_title, filetypes = filetypes, files = files }
+      tabs[#tabs + 1] = { filetypes = filetypes, files = files }
     end
     local placeholders = 0
     for _, buf in ipairs(vim.api.nvim_list_bufs()) do
@@ -81,19 +81,17 @@ runner = coroutine.create(function()
     local s = assert(state(), 'Neovim stopped responding (blocked at an error prompt?)')
     assert(s.reason == expected_reason, 'Unexpected start reason: ' .. s.reason)
     assert(s.errmsg == '' and not s.blocking, 'Startup error: ' .. s.errmsg)
-    assert(#s.tabs == 3, 'Expected Panel and two Git tabs, got ' .. vim.inspect(s.tabs))
-    local panel, changes = s.tabs[1], s.tabs[2]
-    assert(panel.title == vim.fs.basename(repo), 'Panel tab not labeled with the folder name: ' .. vim.inspect(panel))
-    assert(not panel.files['a.txt'] == not file_open, (file_open and 'Panel lacks the open file: ' or 'Panel restored a file from before :restart: ') .. vim.inspect(panel))
-    assert(changes.title == 'Current Changes' and changes.filetypes['DiffviewFiles'], 'Current Changes tab missing: ' .. vim.inspect(changes))
-    assert(s.tabs[3].title == 'Changes against main', 'Branch comparison tab missing: ' .. vim.inspect(s.tabs[3]))
+    assert(#s.tabs == 1, 'Expected one view, got ' .. vim.inspect(s.tabs))
+    local view = s.tabs[1]
+    assert(not view.files['a.txt'] == not file_open, (file_open and 'The open file is missing: ' or 'A file from before :restart was restored: ') .. vim.inspect(view))
+    assert(file_open or view.filetypes['neo-tree'], 'The folder tree is missing: ' .. vim.inspect(view))
     assert(s.placeholders == 0, 'Session placeholder buffers were left behind')
   end
 
   wait(function()
     local s = connect() and state()
-    return s and #s.tabs == 3
-  end, 'Neovim with a terminal UI did not open its workspace tabs')
+    return s and #s.tabs == 1 and s.tabs[1].filetypes['neo-tree']
+  end, 'Neovim with a terminal UI did not open the folder tree')
   vim.rpcnotify(channel, 'nvim_input', ':edit a.txt<CR>')
   wait(function()
     local s = state()
@@ -105,11 +103,11 @@ runner = coroutine.create(function()
   local last
   local restored = pcall(wait, function()
     last = connect() and state() or last
-    return last and last.reason == 'restart!' and #last.tabs == 3 and last.tabs[2].filetypes['DiffviewFiles']
+    return last and last.reason == 'restart!' and last.tabs[1].filetypes['neo-tree']
   end, 'timeout')
-  assert(restored, 'Workspace was not rebuilt after :restart; last answer: ' .. vim.inspect(last))
+  assert(restored, 'The folder tree did not come back after :restart; last answer: ' .. vim.inspect(last))
   check('restart!', false)
-  print('PASS :restart: starts fresh with Panel and Git tabs, nothing restored, no errors')
+  print('PASS :restart: starts fresh in one view with the folder tree, nothing restored, no errors')
 
   pcall(vim.rpcnotify, channel, 'nvim_command', 'qa!')
   pause(500)

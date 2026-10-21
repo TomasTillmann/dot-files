@@ -60,25 +60,8 @@ end
 
 -- Don't show the mode, since it's already in the status line
 vim.o.showmode = false
-vim.o.tabline = "%!v:lua.require('tabline').render()"
--- Keep tab-bar double-clicks from creating empty tabs; retain text selection elsewhere.
-vim.keymap.set({ 'n', 'x', 'i', 't' }, '<2-LeftMouse>', function()
-  local tabline_visible = vim.o.showtabline == 2 or (vim.o.showtabline == 1 and #vim.api.nvim_list_tabpages() > 1)
-  if tabline_visible and vim.fn.getmousepos().screenrow == 1 then return '' end
-  return '<2-LeftMouse>'
-end, { expr = true, desc = 'Ignore tab-bar double-click' })
-vim.keymap.set('n', '<LeftMouse>', function() return require('diff_base').click() end, { expr = true, desc = 'Click Git comparison to change branch' })
-for index = 1, 9 do
-  vim.keymap.set('n', tostring(index), function() require('tabline').select(index) end, { desc = 'Go to tab ' .. index })
-end
-vim.api.nvim_create_autocmd('VimEnter', {
-  once = true,
-  callback = function()
-    if not package.loaded.lazy or #vim.api.nvim_list_uis() == 0 or #vim.api.nvim_list_tabpages() > 1 or vim.fn.argc() > 1 then return end
-    local directory = vim.fn.argc() == 0 and vim.fn.getcwd() or vim.fn.argv(0)
-    if vim.fn.isdirectory(directory) == 1 then require('tabline').open_workspace(directory) end
-  end,
-})
+-- One view, no tabs: lists and diffs open in place, so the tab bar never shows.
+vim.o.showtabline = 0
 -- :restart and ZR always start fresh, like opening Neovim again: no session, so no restored windows or tabs.
 vim.keymap.set('ca', 'restart', function()
   return vim.fn.getcmdtype() == ':' and vim.fn.getcmdline() == 'restart' and 'restart!' or 'restart'
@@ -650,7 +633,6 @@ entrypoint()
     dependencies = { 'nvim-lua/plenary.nvim', 'MunifTanjim/nui.nvim', 'nvim-tree/nvim-web-devicons' },
     keys = {
       { '<leader>e', function() require('file_tree').toggle() end, desc = 'Toggle file tree' },
-      { '<leader>b', function() require('side_panel').toggle() end, desc = 'Toggle Git side panel' },
     },
     opts = {
       enable_git_status = false,
@@ -683,24 +665,25 @@ entrypoint()
     },
   },
 
-  { -- Changes and history in a dedicated review tab.
+  { -- Side-by-side diffs for the Git lists (lua/git_view.lua), full view without Diffview's file panel.
     'sindrets/diffview.nvim',
     cmd = { 'DiffviewOpen', 'DiffviewFileHistory', 'DiffviewClose' },
     keys = {
-      { '<leader>gd', '<cmd>DiffviewOpen<cr>', desc = 'Git diff / working changes' },
-      { '<leader>gm', '<cmd>DiffviewOpen origin/main...HEAD --imply-local<cr>', desc = 'Git branch changes vs main' },
-      { '<leader>gb', function() require('diff_base').pick() end, desc = 'Git branch changes vs picked branch' },
-      { '<leader>gh', '<cmd>DiffviewFileHistory<cr>', desc = 'Git repository history' },
-      { '<leader>gf', '<cmd>DiffviewFileHistory %<cr>', desc = 'Git current-file history' },
-      { '<leader>gq', '<cmd>DiffviewClose<cr>', desc = 'Close Git view' },
+      { '<leader>gg', function() require('git_view').changes() end, desc = 'Git current changes' },
+      { '<leader>gm', function() require('git_view').against() end, desc = 'Git changes against main' },
+      { '<leader>gb', function() require('diff_base').pick() end, desc = 'Git changes against a picked branch' },
+      { '<leader>gh', function() require('git_view').history() end, desc = 'Git commit history' },
+      { '<leader>gf', function() require('git_view').file_history() end, desc = 'Git current-file history' },
+      { '<leader>gq', function() require('git_view').close_diff() end, desc = 'Close Git diff' },
     },
     opts = {
       watch_index = false, -- diff_refresh watches index/ref changes without polling.
       show_help_hints = false,
-      keymaps = { -- The global Space b (side_panel) toggles the panel; Diffview's Space b/e are disabled.
+      keymaps = { -- The file panel stays closed: Diffview's panel keys are disabled; q returns to the list.
         view = {
           { 'n', '<C-j>', function() require('diff_navigation').jump(1) end, { desc = 'Next change across files' } },
           { 'n', '<C-k>', function() require('diff_navigation').jump(-1) end, { desc = 'Previous change across files' } },
+          { 'n', 'q', function() require('git_view').close_diff() end, { desc = 'Back to the Git list' } },
           { 'n', '<leader>b', false },
           { 'n', '<leader>e', false },
         },
@@ -711,6 +694,7 @@ entrypoint()
         view_opened = function(view)
           vim.t[view.tabpage].diffview_title = view.rev_arg and ('Changes against ' .. view.rev_arg:gsub('%.%.%.HEAD$', ''):gsub('^origin/', ''))
             or (view.update_files and 'Current Changes' or 'History')
+          require('git_view').view_opened(view)
           require('diff_refresh').start(view)
         end,
         view_closed = function(view) require('diff_refresh').stop(view) end,

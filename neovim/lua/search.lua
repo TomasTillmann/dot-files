@@ -9,22 +9,16 @@ end
 
 local function editing(win)
   local buf = vim.api.nvim_win_get_buf(win)
-  return vim.api.nvim_win_get_config(win).relative == '' and (vim.bo[buf].buftype == '' or vim.bo[buf].filetype == 'ministarter' or vim.bo[buf].filetype == 'neo-tree')
+  local filetype = vim.bo[buf].filetype
+  return vim.api.nvim_win_get_config(win).relative == '' and (vim.bo[buf].buftype == '' or filetype == 'ministarter' or filetype == 'neo-tree' or filetype == 'gitview')
 end
 
--- Telescope target window: picks from Git tabs open in the Panel tab.
+-- Telescope target window: the one editing view. From a preview that is the list beside it; from a Git diff the diff closes first.
 function M.selection_window()
+  local owner = require('preview_pane').owner_of(vim.api.nvim_get_current_win())
+  if owner then return owner end
   if not vim.t.diffview_title then return 0 end
-  local tabs = vim.api.nvim_list_tabpages()
-  local panel = vim.iter(tabs):find(function(tab) return vim.t[tab].workspace_panel end)
-    or vim.iter(tabs):find(function(tab) return not vim.t[tab].diffview_title end)
-  if panel then
-    vim.api.nvim_set_current_tabpage(panel)
-  else
-    vim.cmd('0tabnew')
-    vim.t.workspace_panel = true
-    vim.t.workspace_title = vim.fs.basename(vim.fn.getcwd())
-  end
+  require('git_view').close_diff()
   if editing(0) then return vim.api.nvim_get_current_win() end
   for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
     if editing(win) then return win end
