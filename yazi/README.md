@@ -1,6 +1,6 @@
 # Yazi on macOS
 
-Yazi is the terminal file manager launched by `f`. This folder preserves the current `keymap.toml` and the `f` zsh function from this Mac. The custom shortcut is **Ctrl+C → copy file path to the clipboard**; everything else uses Yazi’s defaults. There are no custom themes or plugins. Baseline: **Yazi 26.5.6**; Homebrew installs its current version.
+Yazi is the terminal file manager launched by `f`. This folder preserves the current `keymap.toml`, `yazi.toml`, and the `f` zsh function from this Mac. The custom shortcut is **Ctrl+C → copy file path to the clipboard**, and files are sorted by **creation time, newest first** (directories still listed first); everything else uses Yazi’s defaults. There are no custom themes or plugins. Baseline: **Yazi 26.5.6**; Homebrew installs its current version.
 
 ## Install on another Mac
 
@@ -56,4 +56,4 @@ For the same terminal appearance, follow [Kitty’s guide](../kitty/README.md). 
 
 Run `yazi --version` and `type f` to verify installation. Start `f`, navigate into a folder, press `q`, and run `pwd` to confirm the shell changed directory. Start it again, copy a file path with Ctrl+C, and paste it into the shell. Directly running `yazi` does not change the parent shell’s directory; the `f` wrapper supplies that behavior, following [Yazi’s shell integration](https://yazi-rs.github.io/docs/quick-start/#shell-wrapper).
 
-Files: `keymap.toml` contains the shortcut; `f.zsh` contains shell integration. Local caches, history, project contents, and credentials are not included.
+Files: `keymap.toml` contains the shortcut; `yazi.toml` sets the default sort order; `f.zsh` contains shell integration. Local caches, history, project contents, and credentials are not included.

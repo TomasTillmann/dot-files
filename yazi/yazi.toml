@@ -1,0 +1,6 @@
+#:schema https://yazi-rs.github.io/schemas/yazi.json
+
+[mgr]
+sort_by        = "btime" # creation (birth) time
+sort_reverse   = true    # newest first
+sort_dir_first = true
