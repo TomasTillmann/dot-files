@@ -96,7 +96,7 @@ Start from your project: `cd /path/to/project && nvim .` (or `nvim app.py`). Spa
 | Space Space | Open files by recent use; Enter switches to the previous file (or shows the current file if it is the only one open) |
 | Space `sf` | Fuzzy file search, updated while typing |
 | Space `st` | Live repository type/class search, including from the folder tree/the start screen |
-| Space `ss` | Fuzzy text search within the current buffer |
+| Space `ss` | Fuzzy text search within the current buffer, starting with the word under the cursor |
 | Space `sg` | Live repository text search with ripgrep |
 | `gd` or `grd` | Go to definition |
 | `grt` | Go to type definition |
@@ -131,7 +131,7 @@ Search popups use 98% of the editor width, with equal-width results and preview 
 
 The search menu contains exactly four keys: `sf` files, `st` types, `ss` current-buffer text, and `sg` repository text. Results update before Enter; Enter opens the selected result. Files and grep use the Git repository root even when editing a nested file. Ignored files such as `.venv` stay out of normal project search.
 
-Type search uses Telescope and ty workspace symbols. It works from the start screen and the folder tree too: when necessary, it loads a Python file in the background to start the language server. Start typing a name; the server returns no symbols for an empty query. Results include class-like symbol kinds across the Python project; aliases reported by the server as variables are not included. Text search uses ripgrep patterns; files and current-buffer search support fuzzy matching. The old extra search mappings and aliases have been removed; `Space ?` remains shortcut help. Results selected from the folder tree open in the tree's window at the matched line.
+Type search uses Telescope and ty workspace symbols. It works from the start screen and the folder tree too: when necessary, it loads a Python file in the background to start the language server. Start typing a name; the server returns no symbols for an empty query. Results include class-like symbol kinds across the Python project; aliases reported by the server as variables are not included. Text search uses ripgrep patterns; files and current-buffer search support fuzzy matching. Space `ss` starts with the word under the cursor already typed; Ctrl `w` clears it to type something else. The old extra search mappings and aliases have been removed; `Space ?` remains shortcut help. Results selected from the folder tree open in the tree's window at the matched line.
 
 `rose-pine` is the startup default, styled after ThePrimeagen's videos: transparent background, softer palette measured from his recordings, block cursor in every mode, and no current-line highlight. `rose-pine-moon` and `rose-pine-dawn` keep the stock colors; Catppuccin (Mocha, Macchiato, Frappé, Latte) is also installed. A theme picked interactively lasts for the session; change the `vim.cmd.colorscheme(...)` call in the Rose Pine spec in `init.lua` to change the startup default.
 

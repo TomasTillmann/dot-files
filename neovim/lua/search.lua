@@ -35,8 +35,10 @@ end
 
 function M.files() builtin.find_files({ cwd = root() }) end
 function M.grep() builtin.live_grep({ cwd = root() }) end
--- Jumps within the current buffer, including diff panes.
-function M.buffer() builtin.current_buffer_fuzzy_find({ get_selection_window = function() return 0 end }) end
+-- Jumps within the current buffer, including diff panes; the prompt starts with the word under the cursor.
+function M.buffer()
+  builtin.current_buffer_fuzzy_find({ default_text = vim.fn.expand('<cword>'), get_selection_window = function() return 0 end })
+end
 
 local starting = false
 function M.types()

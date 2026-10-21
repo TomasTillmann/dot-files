@@ -136,8 +136,10 @@ runner = coroutine.create(function()
     end, 'File results did not update while typing')
     close(file_picker, scratch)
 
+    -- The prompt starts with the word under the cursor, so the search runs without typing.
+    vim.api.nvim_win_set_cursor(0, { 2, 3 })
     local buffer_picker = invoke('ss')
-    query('search_repo_token')
+    wait_for(function() return state.get_current_line() == 'search_repo_token' end, 'Current-buffer search did not prefill the word under the cursor')
     wait_for(function()
       local rows = entries(buffer_picker)
       return #rows == 1 and rows[1].lnum == 2 and rows[1].text:find('current-buffer-only', 1, true)
