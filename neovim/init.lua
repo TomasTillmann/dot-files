@@ -652,9 +652,24 @@ entrypoint()
       sources = { 'filesystem' },
       default_component_configs = { diagnostics = { errors_only = true } },
       window = { mappings = { ['<space>'] = 'none', ['Z'] = function(state) require('file_tree').expand_all(state) end } }, -- Space stays the leader inside the tree; Z opens every folder under the cursor except .venv and caches.
+      -- Yazi-style live preview of the file under the cursor (lua/file_tree.lua).
+      event_handlers = {
+        { event = 'neo_tree_buffer_enter', handler = function() require('file_tree').attach_preview(vim.api.nvim_get_current_buf()) end },
+        { event = 'after_render', handler = function(state) require('file_tree').after_render(state) end },
+      },
       filesystem = {
         hijack_netrw_behavior = 'open_current', -- A directory buffer becomes the tree in the same window.
-        window = { mappings = { ['[g'] = 'none', [']g'] = 'none', ['og'] = 'none' } },
+        window = { -- P toggles the live preview; Ctrl-d/u scroll it; l moves into it.
+          mappings = {
+            ['[g'] = 'none', [']g'] = 'none', ['og'] = 'none',
+            ['P'] = function(state) require('file_tree').toggle_preview(state) end,
+            ['<C-d>'] = function(state) require('file_tree').scroll_preview(state, '<C-d>') end,
+            ['<C-u>'] = function(state) require('file_tree').scroll_preview(state, '<C-u>') end,
+            ['<C-f>'] = function(state) require('file_tree').scroll_preview(state, '<C-d>') end,
+            ['<C-b>'] = function(state) require('file_tree').scroll_preview(state, '<C-u>') end,
+            ['l'] = function(state) require('file_tree').focus_preview(state) end,
+          },
+        },
         check_gitignore_in_search = false,
         use_libuv_file_watcher = true,
         -- Dotfiles and gitignored files (.venv, caches) start hidden; H shows or hides them. .git is never shown.

@@ -146,6 +146,13 @@ runner = coroutine.create(function()
   print('PASS windows: splits open right/below, Ctrl-h/j/k/l move focus')
 
   vim.cmd.cd(vim.fn.fnameescape(base))
+  vim.o.columns = 160
+  local function preview_win()
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      if vim.b[vim.api.nvim_win_get_buf(win)].preview_pane then return win end
+    end
+  end
+  local function previewed() local win = preview_win(); return win and vim.b[vim.api.nvim_win_get_buf(win)].preview_pane end
   -- Space e shows the folder tree in the same window, on the current file; Space e again returns to the file.
   vim.cmd.edit(vim.fn.fnameescape(file))
   local file_win, file_buf = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
@@ -156,9 +163,42 @@ runner = coroutine.create(function()
     local node = require('neo-tree.sources.manager').get_state('filesystem', nil, file_win).tree:get_node()
     return node and node.path == file
   end, 'Space e did not select the current file in the tree')
+  wait(function() return previewed() == file end, 'The first Space e did not preview the current file')
+  assert(vim.api.nvim_get_current_win() == file_win, 'The preview took focus from the tree')
   keys(' e')
   wait(function() return vim.api.nvim_get_current_buf() == file_buf end, 'Space e in the tree did not return to the file')
   print('PASS folder tree: Space e toggles a full-window tree on the current file')
+
+  -- The tree previews the file under the cursor on the right while focus stays in the tree.
+  local long = base .. '/long.py'
+  local long_lines = {}
+  for i = 1, 300 do long_lines[i] = 'value_' .. i .. ' = ' .. i end
+  vim.fn.writefile(long_lines, long)
+  keys(' e')
+  wait(function() return previewed() == file end, 'The tree did not preview the current file')
+  assert(vim.bo.filetype == 'neo-tree', 'Opening the preview moved focus out of the tree')
+  assert(vim.api.nvim_win_get_position(preview_win())[2] > 0, 'The preview did not open on the right')
+  local tree_state = require('neo-tree.sources.manager').get_state('filesystem', nil, file_win)
+  local function cursor_path() return tree_state.tree:get_node().path end
+  local moved = false
+  for _ = 1, 5 do
+    keys('k')
+    if cursor_path() == long then moved = true; break end
+  end
+  assert(moved, 'Could not move the tree cursor onto long.py')
+  wait(function() return previewed() == long end, 'The preview did not follow the tree cursor')
+  assert(vim.api.nvim_get_current_win() == file_win, 'Moving in the tree moved focus out of it')
+  assert(not vim.bo[vim.api.nvim_win_get_buf(preview_win())].modifiable, 'The preview is editable')
+  keys('<C-d>')
+  assert(vim.fn.line('w0', preview_win()) > 1, 'Ctrl-d in the tree did not scroll the preview')
+  assert(vim.api.nvim_get_current_win() == file_win, 'Ctrl-d moved focus out of the tree')
+  keys('P'); wait(function() return preview_win() == nil end, 'P did not hide the preview')
+  keys('P'); wait(function() return previewed() == long end, 'P did not bring the preview back')
+  keys('l'); assert(vim.api.nvim_get_current_win() == preview_win(), 'l did not move into the preview')
+  keys('q'); assert(vim.api.nvim_get_current_win() == file_win, 'q in the preview did not return to the tree')
+  keys(' e')
+  wait(function() return preview_win() == nil and vim.bo.filetype ~= 'neo-tree' end, 'Closing the tree left the preview open')
+  print('PASS folder tree preview: follows the cursor on the right, focus stays in the tree, Ctrl-d scrolls, P/l/q work, closes with the tree')
 
   vim.cmd('qa!')
 end)
