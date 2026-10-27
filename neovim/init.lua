@@ -671,7 +671,7 @@ entrypoint()
     keys = {
       { '<leader>gg', function() require('git_view').changes() end, desc = 'Git current changes' },
       { '<leader>gm', function() require('git_view').against() end, desc = 'Git changes against main' },
-      { '<leader>gb', function() require('diff_base').pick() end, desc = 'Git changes against a picked branch' },
+      { '<leader>gb', function() require('git_view').against_parent() end, desc = 'Git changes against the parent branch' },
       { '<leader>gh', function() require('git_view').history() end, desc = 'Git commit history' },
       { '<leader>gf', function() require('git_view').file_history() end, desc = 'Git current-file history' },
       { '<leader>gq', function() require('git_view').close_diff() end, desc = 'Close Git diff' },

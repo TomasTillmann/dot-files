@@ -205,20 +205,27 @@ runner = coroutine.create(function()
     keys('q')
     wait(function() return vim.bo.filetype == 'neo-tree' end, 'q did not go back to the tree')
 
-    -- Space gb: a picked branch, with the picker's Git actions disabled.
+    -- Space gb: changes since leaving release, the branch feature was created from.
     vim.api.nvim_set_current_buf(target)
     keys(' gb')
+    in_list('Changes against release')
+    assert(row_of('feature%.txt') and not row_of('release%.txt'), 'Release comparison list: ' .. table.concat(lines(), '|'))
+    keys('q')
+    wait(function() return vim.api.nvim_get_current_buf() == target end, 'q did not go back from the parent comparison')
+
+    -- The branch picker Space gb falls back to without a parent branch, with the picker's Git actions disabled.
+    require('diff_base').pick()
     wait(function() return vim.bo.filetype == 'TelescopePrompt' end, 'Branch picker did not open')
     vim.api.nvim_input('<C-r>')
-    vim.api.nvim_input('release')
+    vim.api.nvim_input('^side')
     wait(function()
       local picker = state.get_current_picker(vim.api.nvim_get_current_buf())
       local entry = picker and picker:get_selection()
-      return entry and entry.value == 'release'
-    end, 'Picker did not select release')
+      return entry and entry.value == 'side'
+    end, 'Picker did not select side')
     vim.api.nvim_input('<CR>')
-    in_list('Changes against release')
-    assert(row_of('feature%.txt') and not row_of('release%.txt'), 'Release comparison list: ' .. table.concat(lines(), '|'))
+    in_list('Changes against side')
+    assert(row_of('feature%.txt') and not row_of('release%.txt') and not row_of('side%.txt'), 'Side comparison list: ' .. table.concat(lines(), '|'))
     assert(git('rev-parse', 'HEAD') == head and git('branch', '--show-current') == 'feature', 'Picker changed the repository')
 
     -- Space gh: every branch as a commit graph, full width without preview, starting on HEAD; a toggles to this branch.

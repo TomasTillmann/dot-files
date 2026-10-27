@@ -1,6 +1,6 @@
 local M = {}
 
--- Space gb: pick a branch and list HEAD's changes since diverging from it (lua/git_view.lua).
+-- Space gb without a detectable parent branch: pick a branch and list HEAD's changes since diverging from it (lua/git_view.lua).
 function M.pick()
   local toplevel = require('git_view').root()
   if not toplevel then return end

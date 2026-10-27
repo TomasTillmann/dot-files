@@ -1,5 +1,5 @@
 -- Git lists in the one editing view, like the folder tree: Space gg current changes, Space gm changes against main,
--- Space gb against a picked branch, Space gh commit history, Space gf history of the current file.
+-- Space gb against the branch this one was created from (else a picked one), Space gh commit history, Space gf history of the current file.
 -- In the change lists j/k previews the change under the cursor read-only on the right; the history lists are a
 -- full-width commit graph without preview. Enter opens the side-by-side diff in place (Diffview without its file panel); q goes back.
 local M = {}
@@ -496,6 +496,39 @@ function M.changes()
   })
 end
 
+-- The branch the current one was created from. Git doesn't store it, so: the branch's reflog ("Created from X", or the
+-- "checkout: moving from X" that created it) unless it was rebased since; otherwise the branch it forked from last,
+-- i.e. the one sharing the most of HEAD's history (fewest HEAD commits it lacks, then fewest of its own on top).
+function M.parent_branch(root)
+  local branch = vim.trim(git(root, { 'branch', '--show-current' }) or '')
+  if branch == '' then return nil end
+  local own = { [branch] = true, ['origin/' .. branch] = true }
+  local upstream = git(root, { 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}' })
+  if upstream then own[vim.trim(upstream)] = true end
+  -- Branches HEAD has commits beyond (those containing HEAD would compare empty): name -> { ahead, behind }.
+  local refs = git(root, { 'for-each-ref', '--format=%(refname:short)%09%(symref)%09%(ahead-behind:HEAD)', 'refs/heads', 'refs/remotes' }) or ''
+  local candidates, best = {}, nil
+  for name, symref, ahead, behind in refs:gmatch('([^\t\n]+)\t([^\t\n]*)\t(%d+) (%d+)') do
+    ahead, behind = tonumber(ahead), tonumber(behind)
+    if symref == '' and not own[name] and behind > 0 then
+      candidates[name] = true
+      if not best or behind < best.behind or (behind == best.behind and ahead < best.ahead) then
+        best = { name = name, ahead = ahead, behind = behind }
+      end
+    end
+  end
+  local reflog = git(root, { 'reflog', 'show', '--format=%gs', 'refs/heads/' .. branch, '--' }) or ''
+  if not reflog:find('(finish): refs/heads/', 1, true) then -- rebase or pull --rebase
+    local created = reflog:match('branch: Created from ([^\n]+)\n?$')
+    if created == 'HEAD' then
+      local moves = git(root, { 'reflog', 'show', '--format=%gs', 'HEAD', '--' }) or ''
+      for from in moves:gmatch('checkout: moving from ([^\n]+) to ' .. vim.pesc(branch) .. '\n') do created = from end
+    end
+    if created and candidates[created] then return created end
+  end
+  return best and best.name
+end
+
 -- Changes on this branch since it left `base` (main by default), including uncommitted ones.
 function M.against(base)
   local root = repository()
@@ -512,6 +545,16 @@ function M.against(base)
     kind = 'files', top = true, name = 'against', root = root, title = 'Changes against ' .. base:gsub('^origin/', ''),
     base = vim.trim(merge_base), diff = { base .. '...HEAD', '--imply-local' },
   })
+end
+
+-- Changes since leaving the branch this one was created from; without one, pick a branch.
+function M.against_parent()
+  local root = repository()
+  if not root then return end
+  local parent = M.parent_branch(root)
+  if parent then return M.against(parent) end
+  vim.notify('No parent branch found; pick one to compare against')
+  require('diff_base').pick()
 end
 
 function M.history_spec(root)
